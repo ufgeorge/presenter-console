@@ -1,1 +1,77 @@
-body{margin:0;background:#111827;color:#f9fafb;font:18px system-ui}main{max-width:680px;margin:auto;padding:24px}h1{text-align:center;font-size:4rem}#notes{background:#1f2937;border-radius:12px;padding:20px;min-height:45vh;white-space:pre-wrap;overflow:auto}nav{display:flex;gap:12px;margin-top:20px}button{flex:1;padding:22px;font-size:1.4rem;font-weight:bold;border:0;border-radius:12px;color:white;background:#2563eb}
+:root {
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: #111827;
+  color: #f9fafb;
+}
+
+main {
+  max-width: 680px;
+  margin: auto;
+  padding: 24px;
+}
+
+h1 {
+  text-align: center;
+  font-size: 4rem;
+  margin: 18px 0;
+}
+
+#notes {
+  min-height: 45vh;
+  overflow: auto;
+  padding: 20px;
+  white-space: pre-wrap;
+  background: #1f2937;
+  border-radius: 12px;
+}
+
+button {
+  border: 0;
+  border-radius: 12px;
+  color: white;
+  background: #2563eb;
+  font-size: 1.2rem;
+  font-weight: bold;
+  padding: 16px;
+}
+
+#back {
+  width: 100%;
+  margin-top: 16px;
+  background: #4b5563;
+}
+
+nav {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+nav button {
+  flex: 1;
+  padding: 22px;
+  font-size: 1.4rem;
+}
+
+.warning {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 12px;
+  color: #111827;
+  background: #fbbf24;
+  border-radius: 8px;
+}
+
+.warning button {
+  padding: 8px 12px;
+  color: #111827;
+  background: #fff;
+}

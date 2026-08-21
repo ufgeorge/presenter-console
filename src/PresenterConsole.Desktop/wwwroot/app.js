@@ -1,1 +1,124 @@
-let ws,seq=0;const status=document.querySelector("#status"),slide=document.querySelector("#slide"),notes=document.querySelector("#notes");function connect(){ws=new WebSocket(`ws://${location.host}/ws`);ws.onopen=()=>{status.textContent="已連線";if(ws.readyState===1)ws.send(JSON.stringify({type:4,command:{commandId:crypto.randomUUID(),sequence:++seq,type:3}}));try{navigator.wakeLock?.request("screen").catch(e=>status.textContent=`已連線（螢幕喚醒鎖定失敗：${e.message}）`)}catch(e){status.textContent=`已連線（螢幕喚醒鎖定失敗：${e.message}）`}};ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.type===2&&m.state){slide.textContent=`第 ${m.state.currentShowPosition}/${m.state.slideCount} 頁`;notes.textContent=m.state.notes||"（本頁沒有 Notes）"}};ws.onclose=()=>{status.textContent="斷線，3 秒後重連…";setTimeout(connect,3000)}}function send(type){if(ws?.readyState===1)ws.send(JSON.stringify({type:1,command:{commandId:crypto.randomUUID(),sequence:++seq,type}}))}prev.onclick=()=>send(1);next.onclick=()=>send(0);back.onclick=()=>status.textContent="請切回 PowerPoint 放映視窗";document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&ws?.readyState===1)navigator.wakeLock?.request("screen").catch(e=>status.textContent=`⚠ 螢幕喚醒鎖定失敗：${e.message}`)});if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js");connect();
+const MessageType = {
+  State: 2,
+  Pong: 6
+};
+
+const CommandType = {
+  Next: 0,
+  Previous: 1,
+  SyncRequest: 3,
+  ActivatePowerPoint: 4,
+  Ping: 5
+};
+
+let socket;
+let sequence = 0;
+let heartbeatTimer;
+let wakeLock;
+
+const status = document.querySelector("#status");
+const slide = document.querySelector("#slide");
+const notes = document.querySelector("#notes");
+const wakeWarning = document.querySelector("#wake-warning");
+const wakeRetry = document.querySelector("#wake-retry");
+
+function setWakeLockWarning(visible) {
+  wakeWarning.hidden = !visible;
+}
+
+async function acquireWakeLock() {
+  if (!("wakeLock" in navigator)) {
+    setWakeLockWarning(true);
+    return;
+  }
+
+  try {
+    wakeLock = await navigator.wakeLock.request("screen");
+    setWakeLockWarning(false);
+  } catch (error) {
+    setWakeLockWarning(true);
+    status.textContent = `已連線（Wake Lock 失敗：${error.message}）`;
+  }
+}
+
+function renderState(state) {
+  if (!state) {
+    return;
+  }
+
+  slide.textContent = `第 ${state.currentShowPosition}/${state.slideCount} 頁`;
+  notes.textContent = state.notes || "（本頁沒有 Notes）";
+}
+
+function sendCommand(type, slideNumber = null) {
+  if (socket?.readyState !== WebSocket.OPEN) {
+    return;
+  }
+
+  socket.send(JSON.stringify({
+    type: 1,
+    command: {
+      commandId: crypto.randomUUID(),
+      sequence: ++sequence,
+      type,
+      slide: slideNumber
+    }
+  }));
+}
+
+function connect() {
+  const token = new URLSearchParams(location.search).get("token");
+  if (!token) {
+    status.textContent = "缺少配對 QR，請重新掃描";
+    return;
+  }
+
+  const protocol = location.protocol === "https:" ? "wss" : "ws";
+  socket = new WebSocket(`${protocol}://${location.host}/ws?token=${encodeURIComponent(token)}`);
+
+  socket.onopen = async () => {
+    status.textContent = "已連線";
+    sendCommand(CommandType.SyncRequest);
+    await acquireWakeLock();
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = setInterval(
+      () => sendCommand(CommandType.Ping),
+      1500);
+  };
+
+  socket.onmessage = event => {
+    const message = JSON.parse(event.data);
+    if (message.type === MessageType.State || message.type === MessageType.Pong) {
+      renderState(message.state);
+    }
+  };
+
+  socket.onclose = () => {
+    clearInterval(heartbeatTimer);
+    status.textContent = "斷線，3 秒後重連…";
+    setTimeout(connect, 3000);
+  };
+
+  socket.onerror = () => {
+    status.textContent = "連線失敗，請確認電腦與手機在同一網路";
+  };
+}
+
+document.querySelector("#prev").onclick = () => sendCommand(CommandType.Previous);
+document.querySelector("#next").onclick = () => sendCommand(CommandType.Next);
+document.querySelector("#back").onclick = () => {
+  sendCommand(CommandType.ActivatePowerPoint);
+  setTimeout(() => sendCommand(CommandType.SyncRequest), 100);
+};
+wakeRetry.onclick = acquireWakeLock;
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    acquireWakeLock();
+  }
+});
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js");
+}
+
+connect();

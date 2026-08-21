@@ -1,1 +1,27 @@
-using System.Runtime.InteropServices; namespace PresenterConsole.Desktop; public sealed class COMReferenceTracker:IDisposable { readonly List<object> refs=[]; public T Track<T>(T v) where T:class{refs.Add(v);return v;} public void Dispose(){for(int i=refs.Count-1;i>=0;i--)if(Marshal.IsComObject(refs[i]))Marshal.FinalReleaseComObject(refs[i]);refs.Clear();} }
+using System.Runtime.InteropServices;
+
+namespace PresenterConsole.Desktop;
+
+public sealed class COMReferenceTracker : IDisposable
+{
+    private readonly List<object> references = [];
+
+    public T Track<T>(T value) where T : class
+    {
+        references.Add(value);
+        return value;
+    }
+
+    public void Dispose()
+    {
+        for (var index = references.Count - 1; index >= 0; index--)
+        {
+            if (Marshal.IsComObject(references[index]))
+            {
+                Marshal.FinalReleaseComObject(references[index]);
+            }
+        }
+
+        references.Clear();
+    }
+}

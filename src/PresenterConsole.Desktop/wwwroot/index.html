@@ -1,1 +1,28 @@
-<!doctype html><html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Presenter Console</title><link rel="manifest" href="manifest.webmanifest"><link rel="stylesheet" href="app.css"><body><main><p id="status">連線中…</p><h1 id="slide">—</h1><article id="notes">尚未取得講稿</article><button id="back">↩ 回簡報</button><nav><button id="prev">◀ PREV</button><button id="next">NEXT ▶</button></nav></main><script src="app.js"></script></body></html>
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#111827">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="app.css">
+  <title>Presenter Console</title>
+</head>
+<body>
+  <main>
+    <p id="status">連線中…</p>
+    <h1 id="slide">—</h1>
+    <section id="wake-warning" class="warning" hidden>
+      <span>⚠ Wake Lock 不可用</span>
+      <button id="wake-retry" type="button">重新啟用</button>
+    </section>
+    <article id="notes">尚未取得講稿</article>
+    <button id="back" type="button">↩ 回簡報</button>
+    <nav>
+      <button id="prev" type="button">◀ PREV</button>
+      <button id="next" type="button">NEXT ▶</button>
+    </nav>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

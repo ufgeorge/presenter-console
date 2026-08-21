@@ -1,3 +1,238 @@
-using System.Net.WebSockets; using System.Text.Json; using Microsoft.AspNetCore.Builder; using PresenterConsole.Contracts; using PresenterConsole.Sync;
+using System.Net;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
+using System.Net.WebSockets;
+using System.Security.Cryptography;
+using System.Text.Json;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using PresenterConsole.Contracts;
+using PresenterConsole.Sync;
+
 namespace PresenterConsole.Desktop;
-public sealed class AgentServer: IAsyncDisposable { readonly IPresentationAdapter ppt; readonly SyncEngine sync; readonly SynchronizationContext ui; readonly List<WebSocket> sockets=[]; WebApplication? app; public AgentServer(IPresentationAdapter p,SyncEngine s){ppt=p;sync=s;ui=SynchronizationContext.Current??new SynchronizationContext();sync.CommandAccepted+=(_,c)=>ui.Post(_=>{if(c.Type==CommandType.Next)ppt.Next();else if(c.Type==CommandType.Previous)ppt.Previous();else if(c.Type==CommandType.GotoSlide&&c.Slide is int n)ppt.GotoSlide(n);},null);ppt.StateChanged+=(_,_)=>Broadcast();sync.Heartbeat+=(_,_)=>BroadcastHeartbeat();} public async Task StartAsync(CancellationToken token){var b=WebApplication.CreateBuilder();b.WebHost.UseUrls("http://0.0.0.0:5217");app=b.Build();app.UseWebSockets();app.MapGet("/",()=>Results.Redirect("/index.html"));app.UseStaticFiles();app.Map("/ws",Handle);await app.StartAsync(token);} async Task Handle(HttpContext c){if(!c.WebSockets.IsWebSocketRequest){c.Response.StatusCode=400;return;}using var ws=await c.WebSockets.AcceptWebSocketAsync();lock(sockets)sockets.Add(ws);await Send(ws,new(MessageType.State,State()));var buf=new byte[8192];try{while(ws.State==WebSocketState.Open){var r=await ws.ReceiveAsync(buf,CancellationToken.None);if(r.MessageType==WebSocketMessageType.Close)break;var m=JsonSerializer.Deserialize<WireMessage>(buf.AsSpan(0,r.Count));if(m?.Command is{ } cmd){if(cmd.Type==CommandType.SyncRequest)await Send(ws,new(MessageType.State,State()));else sync.TryAccept(cmd);}}}finally{lock(sockets)sockets.Remove(ws);}} PresentationState State()=>new(ppt.CurrentShowPosition,ppt.SlideCount,ppt.CurrentNotes,true,0); async void Broadcast(){WebSocket[] ss;lock(sockets)ss=sockets.ToArray();foreach(var s in ss)if(s.State==WebSocketState.Open)await Send(s,new(MessageType.State,State()));} void BroadcastHeartbeat(){WebSocket[] ss;lock(sockets)ss=sockets.ToArray();foreach(var s in ss)if(s.State==WebSocketState.Open)_=Send(s,new(MessageType.Heartbeat));} static Task Send(WebSocket s,WireMessage m)=>s.SendAsync(JsonSerializer.SerializeToUtf8Bytes(m),WebSocketMessageType.Text,true,CancellationToken.None); public async ValueTask DisposeAsync(){if(app is not null)await app.StopAsync();}}
+
+public sealed class AgentServer : IAsyncDisposable
+{
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
+    private readonly IPresentationAdapter presentation;
+    private readonly SyncEngine sync;
+    private readonly SynchronizationContext uiContext;
+    private readonly List<WebSocket> sockets = [];
+    private readonly string pairingToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
+    private readonly DateTimeOffset tokenExpiresAt = DateTimeOffset.UtcNow.AddHours(2);
+    private WebApplication? application;
+
+    public AgentServer(IPresentationAdapter presentation, SyncEngine sync)
+    {
+        this.presentation = presentation;
+        this.sync = sync;
+        uiContext = SynchronizationContext.Current ?? new SynchronizationContext();
+        sync.CommandAccepted += OnCommandAccepted;
+        presentation.StateChanged += (_, _) => BroadcastState();
+    }
+
+    public string PairingUrl => $"http://{GetLanAddress()}:5217/?token={pairingToken}";
+
+    public async Task StartAsync(CancellationToken cancellationToken)
+    {
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseUrls("http://0.0.0.0:5217");
+        application = builder.Build();
+        application.UseDefaultFiles();
+        application.UseStaticFiles();
+        application.UseWebSockets();
+        application.Map("/ws", HandleWebSocketAsync);
+        await application.StartAsync(cancellationToken);
+    }
+
+    private void OnCommandAccepted(object? sender, AgentCommand command)
+    {
+        uiContext.Post(_ =>
+        {
+            switch (command.Type)
+            {
+                case CommandType.Next:
+                    presentation.Next();
+                    break;
+                case CommandType.Previous:
+                    presentation.Previous();
+                    break;
+                case CommandType.GotoSlide when command.Slide is int slide:
+                    presentation.GotoSlide(slide);
+                    break;
+                case CommandType.ActivatePowerPoint:
+                    presentation.ActivateWindow();
+                    break;
+            }
+        }, null);
+    }
+
+    private async Task HandleWebSocketAsync(HttpContext context)
+    {
+        var token = context.Request.Query["token"].ToString();
+        if (!IsValidPairingToken(token) || DateTimeOffset.UtcNow >= tokenExpiresAt)
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+
+        if (!context.WebSockets.IsWebSocketRequest)
+        {
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            return;
+        }
+
+        using var socket = await context.WebSockets.AcceptWebSocketAsync();
+        lock (sockets)
+        {
+            sockets.Add(socket);
+        }
+
+        await SendSafelyAsync(socket, new WireMessage(MessageType.State, State: State()));
+        var buffer = new byte[8192];
+
+        try
+        {
+            while (socket.State == WebSocketState.Open)
+            {
+                var result = await socket.ReceiveAsync(buffer, CancellationToken.None);
+                if (result.MessageType == WebSocketMessageType.Close)
+                {
+                    break;
+                }
+
+                var message = JsonSerializer.Deserialize<WireMessage>(
+                    buffer.AsSpan(0, result.Count),
+                    JsonOptions);
+                if (message?.Command is not { } command)
+                {
+                    continue;
+                }
+
+                if (command.Type == CommandType.SyncRequest)
+                {
+                    await SendSafelyAsync(socket, new WireMessage(MessageType.State, State: State()));
+                }
+                else if (command.Type == CommandType.Ping)
+                {
+                    await SendSafelyAsync(socket, new WireMessage(MessageType.Pong, State: State()));
+                }
+                else
+                {
+                    sync.TryAccept(command);
+                }
+            }
+        }
+        finally
+        {
+            RemoveSocket(socket);
+        }
+    }
+
+    private PresentationState State() => new(
+        presentation.CurrentShowPosition,
+        presentation.SlideCount,
+        presentation.CurrentNotes,
+        true,
+        sync.LastSequence);
+
+    private void BroadcastState()
+    {
+        WebSocket[] clients;
+        lock (sockets)
+        {
+            clients = sockets.ToArray();
+        }
+
+        var message = new WireMessage(MessageType.State, State: State());
+        foreach (var client in clients)
+        {
+            _ = SendSafelyAsync(client, message);
+        }
+    }
+
+    private bool IsValidPairingToken(string token)
+    {
+        if (token.Length != pairingToken.Length)
+        {
+            return false;
+        }
+
+        try
+        {
+            return CryptographicOperations.FixedTimeEquals(
+                Convert.FromHexString(token),
+                Convert.FromHexString(pairingToken));
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+    }
+
+    private async Task SendSafelyAsync(WebSocket socket, WireMessage message)
+    {
+        try
+        {
+            if (socket.State == WebSocketState.Open)
+            {
+                await socket.SendAsync(
+                    JsonSerializer.SerializeToUtf8Bytes(message, JsonOptions),
+                    WebSocketMessageType.Text,
+                    true,
+                    CancellationToken.None);
+            }
+        }
+        catch (WebSocketException)
+        {
+            RemoveSocket(socket);
+        }
+        catch (InvalidOperationException)
+        {
+            RemoveSocket(socket);
+        }
+    }
+
+    private void RemoveSocket(WebSocket socket)
+    {
+        lock (sockets)
+        {
+            sockets.Remove(socket);
+        }
+    }
+
+    private static string GetLanAddress()
+    {
+        foreach (var networkInterface in NetworkInterface.GetAllNetworkInterfaces())
+        {
+            if (networkInterface.OperationalStatus != OperationalStatus.Up)
+            {
+                continue;
+            }
+
+            foreach (var address in networkInterface.GetIPProperties().UnicastAddresses)
+            {
+                if (address.Address.AddressFamily == AddressFamily.InterNetwork
+                    && !IPAddress.IsLoopback(address.Address))
+                {
+                    return address.Address.ToString();
+                }
+            }
+        }
+
+        return "127.0.0.1";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (application is not null)
+        {
+            await application.StopAsync();
+        }
+    }
+}
