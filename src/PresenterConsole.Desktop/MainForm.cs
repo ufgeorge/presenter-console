@@ -8,13 +8,13 @@ public sealed class MainForm : Form
 {
     private readonly Label status = new()
     {
-        Text = "未連線",
+        Text = Localization.NotConnected,
         AutoSize = true
     };
 
     private readonly Label slide = new()
     {
-        Text = "目前頁碼：—",
+        Text = Localization.SlideNumber(0, 0).Replace("0/0", "—", StringComparison.Ordinal),
         AutoSize = true
     };
 
@@ -59,10 +59,10 @@ public sealed class MainForm : Form
 
     private void RefreshState()
     {
-        slide.Text = $"目前頁碼：{presentation.CurrentShowPosition}/{presentation.SlideCount}";
+        slide.Text = Localization.SlideNumber(presentation.CurrentShowPosition, presentation.SlideCount);
         status.Text = presentation is UnavailablePresentationAdapter
-            ? "Agent 已啟動 · 尚未連線到 PowerPoint · QR 有效 2 小時"
-            : "Agent 已啟動 · LAN WebSocket · QR 有效 2 小時";
+            ? Localization.StartedUnavailable
+            : Localization.Started;
 
         using var qrData = new QRCodeGenerator().CreateQrCode(
             server?.PairingUrl ?? string.Empty,
