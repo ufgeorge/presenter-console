@@ -4,15 +4,18 @@
 - [x] Issue #9：修復手機 NEXT/PREV 控制、拒絕命令診斷與 PowerPoint COM log
 - [x] Issue #11：手機開始簡報按鈕與放映依賴診斷
 - [x] Issue #18：修復非 secure context 下 crypto.randomUUID 導致手機命令無法送出
+- [x] Issue #20：修復 COMReferenceTracker 釋放放映視窗導致開始簡報立即結束
 
 
 ## IN PROGRESS
 - [x] Issue #9：實作與驗證
 - [x] Issue #11：實作與驗證
 - [x] Issue #18：實作與驗證
+- [x] Issue #20：實作與驗證
 
 
 ## DONE
+- [x] Issue #20：COM 放映視窗不得由每次操作 FinalRelease
 - [x] Issue #7：發布 Office 15.0.0.0 Office.dll、加入輸出驗證並完成啟動驗證
 - [x] Issue #5：改資料夾發布、加入 fallback 診斷 log 並完成驗證
 - [x] Issue #3：建立 self-contained Windows 發布腳本並完成 exe 啟動驗證
