@@ -114,10 +114,11 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         try
         {
             application.Activate();
-            using var tracker = new COMReferenceTracker();
             if (presentation?.SlideShowWindow is { } window)
             {
-                tracker.Track(window).Activate();
+                // SlideShowWindow is owned by PowerPoint's running show. Do not
+                // FinalRelease it at the end of this operation.
+                window.Activate();
             }
 
             RefreshActualState();
@@ -158,11 +159,13 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             LogDiagnostic("StartPresentation step=StartingSlide 設定 succeeded");
 
             LogDiagnostic("StartPresentation step=Run() begin");
-            dynamic window = tracker.Track((object)settings.Run());
+            // Run() returns the live slideshow window. It must not be tracked by
+            // the per-operation tracker, otherwise Dispose() closes the show.
+            dynamic window = settings.Run();
             LogDiagnostic("StartPresentation step=Run() succeeded");
 
             LogDiagnostic("StartPresentation step=CurrentShowPosition 讀取 begin");
-            dynamic showView = tracker.Track((object)window.View);
+            dynamic showView = window.View;
             CurrentShowPosition = (int)showView.CurrentShowPosition;
             LogDiagnostic("StartPresentation step=CurrentShowPosition 讀取 succeeded");
             StateChanged?.Invoke(this, EventArgs.Empty);
@@ -176,15 +179,15 @@ public sealed class PowerPointAdapter : IPresentationAdapter
     {
         try
         {
-            using var tracker = new COMReferenceTracker();
             if (presentation?.SlideShowWindow is not { } window)
             {
                 LogDiagnostic("未在放映模式，命令被忽略");
                 return;
             }
 
-            var trackedWindow = tracker.Track(window);
-            dynamic view = tracker.Track((object)trackedWindow.View);
+            // The window and view belong to the active slideshow and must remain
+            // valid after this operation returns.
+            dynamic view = window.View;
             action(view);
             CurrentShowPosition = (int)view.CurrentShowPosition;
             StateChanged?.Invoke(this, EventArgs.Empty);
@@ -206,7 +209,7 @@ public sealed class PowerPointAdapter : IPresentationAdapter
                 return;
             }
 
-            dynamic view = tracker.Track((object)tracker.Track(window).View);
+            dynamic view = window.View;
             CurrentShowPosition = (int)view.CurrentShowPosition;
             StateChanged?.Invoke(this, EventArgs.Empty);
         }
