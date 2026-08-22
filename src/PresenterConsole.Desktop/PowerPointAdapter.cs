@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Windows.Forms;
 using PowerPoint = Microsoft.Office.Interop.PowerPoint;
 
 namespace PresenterConsole.Desktop;
@@ -25,6 +26,8 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         application = TryGetActiveApplication() ?? CreateApplication();
         application.PresentationOpen += OnPresentationOpen;
         application.PresentationClose += OnPresentationClose;
+        application.SlideShowBegin += OnSlideShowBegin;
+        application.SlideShowEnd += OnSlideShowEnd;
         application.SlideShowNextSlide += OnSlideShowNextSlide;
 
         foreach (PowerPoint.Presentation existing in application.Presentations)
@@ -113,6 +116,24 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         });
     }
 
+    private void OnSlideShowBegin(PowerPoint.SlideShowWindow window)
+    {
+        LogDiagnostic("SlideShowBegin 觸發");
+    }
+
+    private void OnSlideShowEnd(PowerPoint.Presentation endedPresentation)
+    {
+        LogDiagnostic("SlideShowEnd 觸發");
+        PostToUi(() =>
+        {
+            if (ReferenceEquals(presentation, endedPresentation))
+            {
+                CurrentShowPosition = 0;
+                currentNotes = string.Empty;
+                StateChanged?.Invoke(this, EventArgs.Empty);
+            }
+        });
+    }
     public void Next() => InvokeView("Next", view => view.Next());
     public void Previous() => InvokeView("Previous", view => view.Previous());
 
@@ -154,31 +175,74 @@ public sealed class PowerPointAdapter : IPresentationAdapter
                 return;
             }
 
+            var startingSlide = GetStartingSlide(fromCurrentSlide);
+            LogDiagnostic($"StartPresentation path=SendKeys startingSlide={startingSlide}");
+            application.Activate();
+            SendKeys.SendWait(fromCurrentSlide ? "+{F5}" : "{F5}");
+            LogDiagnostic("StartPresentation path=SendKeys F5 sent");
+            Thread.Sleep(400);
+            if (IsSlideShowWindowAlive())
+            {
+                LogDiagnostic("StartPresentation path=SendKeys window alive");
+                RefreshActualState();
+                return;
+            }
+
+            LogDiagnostic("StartPresentation path=SendKeys window missing; fallback=Run()");
+            StartPresentationWithComRun(fromCurrentSlide, startingSlide);
+        }
+        catch (COMException exception)
+        {
+            ReportComFailure("StartPresentation", exception);
+        }
+        catch (InvalidOperationException exception)
+        {
+            LogDiagnostic($"StartPresentation SendKeys 失敗，fallback=Run()：{exception.Message}");
+            StartPresentationWithComRun(fromCurrentSlide, GetStartingSlide(fromCurrentSlide));
+        }
+    }
+
+    private int GetStartingSlide(bool fromCurrentSlide)
+    {
+        if (!fromCurrentSlide)
+        {
+            return 1;
+        }
+
+        using var tracker = new COMReferenceTracker();
+        dynamic activeWindow = tracker.Track((object)application.ActiveWindow);
+        dynamic view = tracker.Track((object)activeWindow.View);
+        dynamic slide = tracker.Track((object)view.Slide);
+        return (int)slide.SlideIndex;
+    }
+
+    private bool IsSlideShowWindowAlive()
+    {
+        try
+        {
+            return presentation?.SlideShowWindow is not null;
+        }
+        catch (COMException exception)
+        {
+            LogComException(exception);
+            return false;
+        }
+    }
+
+    private void StartPresentationWithComRun(bool fromCurrentSlide, int startingSlide)
+    {
+        try
+        {
             using var tracker = new COMReferenceTracker();
             LogDiagnostic("StartPresentation step=SlideShowSettings 取得 begin");
-            dynamic settings = tracker.Track((object)presentation.SlideShowSettings);
+            dynamic settings = tracker.Track((object)presentation!.SlideShowSettings);
             LogDiagnostic("StartPresentation step=SlideShowSettings 取得 succeeded");
-
             LogDiagnostic("StartPresentation step=StartingSlide 設定 begin");
-            if (fromCurrentSlide)
-            {
-                dynamic activeWindow = tracker.Track((object)application.ActiveWindow);
-                dynamic view = tracker.Track((object)activeWindow.View);
-                dynamic slide = tracker.Track((object)view.Slide);
-                settings.StartingSlide = (int)slide.SlideIndex;
-            }
-            else
-            {
-                settings.StartingSlide = 1;
-            }
+            settings.StartingSlide = fromCurrentSlide ? startingSlide : 1;
             LogDiagnostic("StartPresentation step=StartingSlide 設定 succeeded");
-
             LogDiagnostic("StartPresentation step=Run() begin");
-            // Run() returns the live slideshow window. It must not be tracked by
-            // the per-operation tracker, otherwise Dispose() closes the show.
             dynamic window = settings.Run();
             LogDiagnostic("StartPresentation step=Run() succeeded");
-
             LogDiagnostic("StartPresentation step=CurrentShowPosition 讀取 begin");
             dynamic showView = window.View;
             CurrentShowPosition = (int)showView.CurrentShowPosition;
@@ -188,7 +252,7 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         }
         catch (COMException exception)
         {
-            ReportComFailure("StartPresentation", exception);
+            ReportComFailure("StartPresentation fallback", exception);
         }
     }
     private void InvokeView(string operation, Action<dynamic> action)
@@ -280,6 +344,8 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         try
         {
             application.SlideShowNextSlide -= OnSlideShowNextSlide;
+            application.SlideShowBegin -= OnSlideShowBegin;
+            application.SlideShowEnd -= OnSlideShowEnd;
             application.PresentationOpen -= OnPresentationOpen;
             application.PresentationClose -= OnPresentationClose;
         }

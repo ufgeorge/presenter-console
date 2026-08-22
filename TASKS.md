@@ -16,6 +16,7 @@
 
 
 - [x] Issue #22：COM 事件 marshal 到 UI thread、COM 狀態快取與 RPC 崩潰診斷
+- [x] Issue #24：放映立即結束診斷與 SendKeys F5 替代放映路徑
 
 ## DONE
 - [x] Issue #20：COM 放映視窗不得由每次操作 FinalRelease
