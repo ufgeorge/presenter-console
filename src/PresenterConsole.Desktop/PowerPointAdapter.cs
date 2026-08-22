@@ -49,8 +49,9 @@ public sealed class PowerPointAdapter : IPresentationAdapter
                 ? activeObject as PowerPoint.Application
                 : null;
         }
-        catch (COMException)
+        catch (COMException exception)
         {
+            LogComException(exception);
             return null;
         }
     }
@@ -90,8 +91,9 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             CurrentShowPosition = window.View.CurrentShowPosition;
             StateChanged?.Invoke(this, EventArgs.Empty);
         }
-        catch (COMException)
+        catch (COMException exception)
         {
+            LogComException(exception);
         }
     }
 
@@ -119,8 +121,9 @@ public sealed class PowerPointAdapter : IPresentationAdapter
 
             RefreshActualState();
         }
-        catch (COMException)
+        catch (COMException exception)
         {
+            LogComException(exception);
         }
     }
 
@@ -140,8 +143,9 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             CurrentShowPosition = (int)view.CurrentShowPosition;
             StateChanged?.Invoke(this, EventArgs.Empty);
         }
-        catch (COMException)
+        catch (COMException exception)
         {
+            LogComException(exception);
         }
     }
 
@@ -160,8 +164,9 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             CurrentShowPosition = (int)view.CurrentShowPosition;
             StateChanged?.Invoke(this, EventArgs.Empty);
         }
-        catch (COMException)
+        catch (COMException exception)
         {
+            LogComException(exception);
         }
     }
 
@@ -195,8 +200,9 @@ public sealed class PowerPointAdapter : IPresentationAdapter
 
             return string.Join(Environment.NewLine, notes);
         }
-        catch (COMException)
+        catch (COMException exception)
         {
+            LogComException(exception);
             return string.Empty;
         }
     }
@@ -209,8 +215,9 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             application.PresentationOpen -= OnPresentationOpen;
             application.PresentationClose -= OnPresentationClose;
         }
-        catch (COMException)
+        catch (COMException exception)
         {
+            LogComException(exception);
         }
 
         if (Marshal.IsComObject(presentation!))
@@ -221,6 +228,23 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         if (Marshal.IsComObject(application))
         {
             Marshal.FinalReleaseComObject(application);
+        }
+    }
+    private static void LogComException(Exception exception)
+    {
+        try
+        {
+            var logPath = Path.Combine(AppContext.BaseDirectory, "presenter-console.log");
+            var message = $"[{DateTime.Now:O}] PowerPoint adapter COM failure: {exception.GetType().FullName}: {exception.Message}{Environment.NewLine}";
+            File.AppendAllText(logPath, message);
+        }
+        catch (IOException)
+        {
+            // Logging must not prevent presentation control from continuing.
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Logging must not prevent presentation control from continuing.
         }
     }
 }

@@ -1,9 +1,11 @@
 # Sprint 1 PR review fixes
 
 ## TODO
+- [x] Issue #9：修復手機 NEXT/PREV 控制、拒絕命令診斷與 PowerPoint COM log
 
 
 ## IN PROGRESS
+- [x] Issue #9：實作與驗證
 
 
 ## DONE
