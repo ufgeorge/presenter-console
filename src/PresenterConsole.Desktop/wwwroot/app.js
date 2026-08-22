@@ -32,7 +32,16 @@ const LANGUAGES = {
     startCurrent: "從目前頁開始",
     back: "↩ 回簡報",
     prev: "◀ PREV",
-    next: "NEXT ▶", fontDecrease: "A−", fontIncrease: "A+", fontSizeLabel: "字級", colorLabel: "講稿文字顏色", colorWhite: "白色", colorYellow: "黃色", colorGreen: "綠色", colorRed: "紅色", colorCyan: "青色",
+    next: "NEXT ▶",
+    fontDecrease: "A−",
+    fontIncrease: "A+",
+    fontSizeLabel: "字級",
+    colorLabel: "講稿文字顏色",
+    colorWhite: "白色",
+    colorYellow: "黃色",
+    colorGreen: "綠色",
+    colorRed: "紅色",
+    colorCyan: "青色",
     footer: "手機版本"
   },
   "zh-CN": {
@@ -56,7 +65,16 @@ const LANGUAGES = {
     startCurrent: "从当前页开始",
     back: "↩ 返回演示",
     prev: "◀ PREV",
-    next: "NEXT ▶", fontDecrease: "A−", fontIncrease: "A+", fontSizeLabel: "字号", colorLabel: "讲稿文字颜色", colorWhite: "白色", colorYellow: "黄色", colorGreen: "绿色", colorRed: "红色", colorCyan: "青色",
+    next: "NEXT ▶",
+    fontDecrease: "A−",
+    fontIncrease: "A+",
+    fontSizeLabel: "字号",
+    colorLabel: "讲稿文字颜色",
+    colorWhite: "白色",
+    colorYellow: "黄色",
+    colorGreen: "绿色",
+    colorRed: "红色",
+    colorCyan: "青色",
     footer: "手机版本"
   },
   en: {
@@ -80,7 +98,16 @@ const LANGUAGES = {
     startCurrent: "Start from current slide",
     back: "↩ Return to presentation",
     prev: "◀ PREV",
-    next: "NEXT ▶", fontDecrease: "A−", fontIncrease: "A+", fontSizeLabel: "Size", colorLabel: "Notes text color", colorWhite: "White", colorYellow: "Yellow", colorGreen: "Green", colorRed: "Red", colorCyan: "Cyan",
+    next: "NEXT ▶",
+    fontDecrease: "A−",
+    fontIncrease: "A+",
+    fontSizeLabel: "Size",
+    colorLabel: "Notes text color",
+    colorWhite: "White",
+    colorYellow: "Yellow",
+    colorGreen: "Green",
+    colorRed: "Red",
+    colorCyan: "Cyan",
     footer: "Phone version"
   }
 };
