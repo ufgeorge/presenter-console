@@ -2,13 +2,32 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#111827">
-  <link rel="manifest" href="manifest.webmanifest?v=4"><link rel="stylesheet" href="app.css?v=4"><title>Presenter Console</title>
+  <link rel="manifest" href="manifest.webmanifest?v=5"><link rel="stylesheet" href="app.css?v=5"><title>Presenter Console</title>
 </head>
 <body><main>
-  <p id="status" data-i18n="connecting">連線中…</p><h1 id="slide">—</h1>
-  <section id="wake-warning" class="warning" hidden><div><strong data-i18n="wakeTitle">⚠ 螢幕可能會自動鎖定</strong><p data-i18n="wakeText"></p><details><summary data-i18n="wakeSettings">查看設定路徑</summary><ul><li data-i18n="ios"></li><li data-i18n="android"></li></ul></details></div><button id="wake-retry" type="button" data-i18n="retryWake">重新啟用</button></section>
-  <article id="notes" data-i18n="notFetched">尚未取得講稿</article>
-  <section class="presentation-controls" aria-label="開始簡報"><button id="start" type="button" data-i18n="start">▶ 開始簡報</button><button id="start-current" type="button" data-i18n="startCurrent">從目前頁開始</button></section>
-  <button id="back" type="button" data-i18n="back">↩ 回簡報</button><nav><button id="prev" type="button" data-i18n="prev">◀ PREV</button><button id="next" type="button" data-i18n="next">NEXT ▶</button></nav>
-  <footer id="version"></footer>
-</main><script src="NoSleep.min.js?v=4"></script><script src="app.js?v=4"></script></body></html>
+  <header class="status-bar"><p id="status" data-i18n="connecting">連線中…</p><h1 id="slide">—</h1></header>
+  <section class="primary-area" aria-label="Speaker notes and page controls">
+    <section class="notes-panel">
+      <div class="notes-toolbar" aria-label="Notes display controls">
+        <button id="notes-decrease" type="button" data-i18n="fontDecrease" aria-label="Decrease notes text size">A−</button>
+        <span data-i18n="fontSizeLabel">字級</span>
+        <button id="notes-increase" type="button" data-i18n="fontIncrease" aria-label="Increase notes text size">A+</button>
+        <div class="color-swatches" role="group" data-i18n-aria="colorLabel" aria-label="Notes text color">
+          <button type="button" class="color-swatch color-white" data-note-color="#f9fafb" data-i18n-aria="colorWhite" aria-label="White"></button>
+          <button type="button" class="color-swatch color-yellow" data-note-color="#fde047" data-i18n-aria="colorYellow" aria-label="Yellow"></button>
+          <button type="button" class="color-swatch color-green" data-note-color="#4ade80" data-i18n-aria="colorGreen" aria-label="Green"></button>
+          <button type="button" class="color-swatch color-red" data-note-color="#f87171" data-i18n-aria="colorRed" aria-label="Red"></button>
+          <button type="button" class="color-swatch color-cyan" data-note-color="#67e8f9" data-i18n-aria="colorCyan" aria-label="Cyan"></button>
+        </div>
+      </div>
+      <article id="notes" data-i18n="notFetched">尚未取得講稿</article>
+    </section>
+    <nav class="page-controls" aria-label="Page controls"><button id="prev" type="button" data-i18n="prev">◀ PREV</button><button id="next" type="button" data-i18n="next">NEXT ▶</button></nav>
+  </section>
+  <section class="secondary-area">
+    <section id="wake-warning" class="warning" hidden><div><strong data-i18n="wakeTitle">⚠ 螢幕可能會自動鎖定</strong><p data-i18n="wakeText"></p><details><summary data-i18n="wakeSettings">查看設定路徑</summary><ul><li data-i18n="ios"></li><li data-i18n="android"></li></ul></details></div><button id="wake-retry" type="button" data-i18n="retryWake">重新啟用</button></section>
+    <section class="presentation-controls" aria-label="Start presentation"><button id="start" type="button" data-i18n="start">▶ 開始簡報</button><button id="start-current" type="button" data-i18n="startCurrent">從目前頁開始</button></section>
+    <button id="back" type="button" data-i18n="back">↩ 回簡報</button>
+    <footer id="version"></footer>
+  </section>
+</main><script src="NoSleep.min.js?v=5"></script><script src="app.js?v=5"></script></body></html>

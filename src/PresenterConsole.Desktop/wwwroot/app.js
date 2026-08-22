@@ -8,7 +8,7 @@ const CommandType = {
   StartPresentation: 6,
   StartPresentationFromCurrent: 7
 };
-const APP_VERSION = "v4";
+const APP_VERSION = "v5";
 
 const LANGUAGES = {
   "zh-TW": {
@@ -32,7 +32,7 @@ const LANGUAGES = {
     startCurrent: "從目前頁開始",
     back: "↩ 回簡報",
     prev: "◀ PREV",
-    next: "NEXT ▶",
+    next: "NEXT ▶", fontDecrease: "A−", fontIncrease: "A+", fontSizeLabel: "字級", colorLabel: "講稿文字顏色", colorWhite: "白色", colorYellow: "黃色", colorGreen: "綠色", colorRed: "紅色", colorCyan: "青色",
     footer: "手機版本"
   },
   "zh-CN": {
@@ -56,7 +56,7 @@ const LANGUAGES = {
     startCurrent: "从当前页开始",
     back: "↩ 返回演示",
     prev: "◀ PREV",
-    next: "NEXT ▶",
+    next: "NEXT ▶", fontDecrease: "A−", fontIncrease: "A+", fontSizeLabel: "字号", colorLabel: "讲稿文字颜色", colorWhite: "白色", colorYellow: "黄色", colorGreen: "绿色", colorRed: "红色", colorCyan: "青色",
     footer: "手机版本"
   },
   en: {
@@ -80,7 +80,7 @@ const LANGUAGES = {
     startCurrent: "Start from current slide",
     back: "↩ Return to presentation",
     prev: "◀ PREV",
-    next: "NEXT ▶",
+    next: "NEXT ▶", fontDecrease: "A−", fontIncrease: "A+", fontSizeLabel: "Size", colorLabel: "Notes text color", colorWhite: "White", colorYellow: "Yellow", colorGreen: "Green", colorRed: "Red", colorCyan: "Cyan",
     footer: "Phone version"
   }
 };
@@ -115,8 +115,38 @@ function applyLanguage() {
   for (const node of document.querySelectorAll("[data-i18n]")) {
     node.textContent = text[node.dataset.i18n];
   }
+  for (const node of document.querySelectorAll("[data-i18n-aria]")) {
+    node.setAttribute("aria-label", text[node.dataset.i18nAria]);
+  }
 
   document.querySelector("#version").textContent = `${text.footer} ${APP_VERSION}`;
+}
+
+
+function readPreference(key, fallback) {
+  try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; }
+}
+function writePreference(key, value) {
+  try { localStorage.setItem(key, value); } catch { /* Storage can be unavailable in private browsing. */ }
+}
+function applyNotesFontSize(value) {
+  const size = Math.min(36, Math.max(12, Number(value) || 16));
+  notes.style.fontSize = String(size) + "px";
+  writePreference("presenter-notes-font-size", size);
+}
+function applyNotesColor(value) {
+  const allowed = [...document.querySelectorAll("[data-note-color]")].map(button => button.dataset.noteColor);
+  const color = allowed.includes(value) ? value : "#f9fafb";
+  notes.style.color = color;
+  for (const button of document.querySelectorAll("[data-note-color]")) button.setAttribute("aria-pressed", String(button.dataset.noteColor === color));
+  writePreference("presenter-notes-color", color);
+}
+function setupNotesPreferences() {
+  applyNotesFontSize(Number(readPreference("presenter-notes-font-size", 16)));
+  applyNotesColor(readPreference("presenter-notes-color", "#f9fafb"));
+  document.querySelector("#notes-decrease").onclick = () => applyNotesFontSize(Number.parseInt(notes.style.fontSize, 10) - 2);
+  document.querySelector("#notes-increase").onclick = () => applyNotesFontSize(Number.parseInt(notes.style.fontSize, 10) + 2);
+  for (const button of document.querySelectorAll("[data-note-color]")) button.onclick = () => applyNotesColor(button.dataset.noteColor);
 }
 
 function setWakeLockWarning(visible, fallbackPending = false) {
@@ -257,5 +287,6 @@ document.addEventListener("visibilitychange", () => {
 });
 
 applyLanguage();
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=4");
+setupNotesPreferences();
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=5");
 connect();

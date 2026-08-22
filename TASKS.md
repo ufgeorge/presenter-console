@@ -8,6 +8,7 @@
 
 
 ## IN PROGRESS
+- [x] Issue #30：手機 Notes 與換頁控制響應式版面、字級/字色設定
 - [x] Issue #9：實作與驗證
 - [x] Issue #11：實作與驗證
 - [x] Issue #18：實作與驗證
