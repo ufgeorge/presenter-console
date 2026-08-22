@@ -24,7 +24,7 @@ public sealed class MainForm : Form
         SizeMode = PictureBoxSizeMode.Zoom
     };
 
-    private readonly IPresentationAdapter presentation = new PowerPointAdapter();
+    private readonly IPresentationAdapter presentation = CreatePresentationAdapter();
     private readonly SyncEngine sync = new();
     private AgentServer? server;
 
@@ -59,7 +59,9 @@ public sealed class MainForm : Form
     private void RefreshState()
     {
         slide.Text = $"目前頁碼：{presentation.CurrentShowPosition}/{presentation.SlideCount}";
-        status.Text = "Agent 已啟動 · LAN WebSocket · QR 有效 2 小時";
+        status.Text = presentation is UnavailablePresentationAdapter
+            ? "Agent 已啟動 · 尚未連線到 PowerPoint · QR 有效 2 小時"
+            : "Agent 已啟動 · LAN WebSocket · QR 有效 2 小時";
 
         using var qrData = new QRCodeGenerator().CreateQrCode(
             server?.PairingUrl ?? string.Empty,
@@ -75,5 +77,21 @@ public sealed class MainForm : Form
         server?.DisposeAsync();
         sync.Dispose();
         presentation.Dispose();
+    }
+
+    private static IPresentationAdapter CreatePresentationAdapter()
+    {
+        try
+        {
+            return new PowerPointAdapter();
+        }
+        catch (FileNotFoundException)
+        {
+            return new UnavailablePresentationAdapter();
+        }
+        catch (InvalidOperationException)
+        {
+            return new UnavailablePresentationAdapter();
+        }
     }
 }
