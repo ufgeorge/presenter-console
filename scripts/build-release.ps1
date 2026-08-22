@@ -11,8 +11,6 @@ dotnet publish $projectPath `
     -c Release `
     -r win-x64 `
     --self-contained true `
-    -p:PublishSingleFile=true `
-    -p:IncludeNativeLibrariesForSelfExtract=true `
     -o $publishPath
 
 Write-Host "發布完成：$publishPath\PresenterConsole.Desktop.exe"

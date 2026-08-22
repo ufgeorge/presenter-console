@@ -85,13 +85,33 @@ public sealed class MainForm : Form
         {
             return new PowerPointAdapter();
         }
-        catch (FileNotFoundException)
+        catch (FileNotFoundException exception)
         {
+            LogAdapterFallback(exception);
             return new UnavailablePresentationAdapter();
         }
-        catch (InvalidOperationException)
+        catch (InvalidOperationException exception)
         {
+            LogAdapterFallback(exception);
             return new UnavailablePresentationAdapter();
+        }
+    }
+
+    private static void LogAdapterFallback(Exception exception)
+    {
+        try
+        {
+            var logPath = Path.Combine(AppContext.BaseDirectory, "presenter-console.log");
+            var message = $"[{DateTime.Now:O}] PowerPoint adapter fallback: {exception.GetType().FullName}: {exception.Message}{Environment.NewLine}";
+            File.AppendAllText(logPath, message);
+        }
+        catch (IOException)
+        {
+            // Logging must not prevent the fallback adapter from starting.
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Logging must not prevent the fallback adapter from starting.
         }
     }
 }

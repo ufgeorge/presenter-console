@@ -12,13 +12,13 @@ Sprint 1：PowerPoint 閉環的 Windows Desktop Agent + 手機 PWA。
 .\scripts\build-release.ps1
 ```
 
-腳本會以 `win-x64`、Release、self-contained 模式發布單一執行檔，產出位置為：
+腳本會以 `win-x64`、Release、self-contained 模式發布到資料夾，產出位置為：
 
 ```text
-publish\PresenterConsole.Desktop.exe
+publish\
 ```
 
-將整個 `publish` 資料夾複製到目標 Windows 電腦後，直接執行 `PresenterConsole.Desktop.exe`；目標電腦不需要安裝 .NET SDK 或 .NET Runtime。啟動後會顯示 Agent 視窗與手機配對 QR Code。若要控制 PowerPoint，目標電腦仍需安裝 PowerPoint。
+請將整個 `publish` 資料夾（包含其中的多個檔案，例如 `Microsoft.Office.Interop.PowerPoint.dll`）複製到目標 Windows 電腦後，執行其中的 `PresenterConsole.Desktop.exe`；目標電腦不需要安裝 .NET SDK 或 .NET Runtime。啟動後會顯示 Agent 視窗與手機配對 QR Code。若要控制 PowerPoint，目標電腦仍需安裝 PowerPoint。
 
 一般開發驗證：
 
