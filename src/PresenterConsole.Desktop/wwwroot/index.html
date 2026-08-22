@@ -13,7 +13,17 @@
     <p id="status">連線中…</p>
     <h1 id="slide">—</h1>
     <section id="wake-warning" class="warning" hidden>
-      <span>⚠ Wake Lock 不可用</span>
+      <div>
+        <strong>⚠ 螢幕可能會自動鎖定</strong>
+        <p>請先點擊「重新啟用」；若仍無法保持亮著，請暫時關閉裝置的自動鎖定。</p>
+        <details>
+          <summary>查看設定路徑</summary>
+          <ul>
+            <li>iPhone/iPad：設定 → 螢幕顯示與亮度 → 自動鎖定 → 永不</li>
+            <li>Android：設定 → 顯示 → 螢幕逾時／休眠 → 選擇較長時間</li>
+          </ul>
+        </details>
+      </div>
       <button id="wake-retry" type="button">重新啟用</button>
     </section>
     <article id="notes">尚未取得講稿</article>
@@ -27,6 +37,7 @@
       <button id="next" type="button">NEXT ▶</button>
     </nav>
   </main>
+  <script src="NoSleep.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
