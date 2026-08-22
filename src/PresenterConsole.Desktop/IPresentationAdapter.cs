@@ -7,6 +7,7 @@ public interface IPresentationAdapter : IDisposable
     string CurrentNotes { get; }
 
     event EventHandler? StateChanged;
+    event EventHandler<string>? ErrorOccurred;
 
     void Next();
     void Previous();

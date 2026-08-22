@@ -9,6 +9,7 @@ public sealed class PowerPointAdapter : IPresentationAdapter
     private PowerPoint.Presentation? presentation;
 
     public event EventHandler? StateChanged;
+    public event EventHandler<string>? ErrorOccurred;
 
     public int CurrentShowPosition { get; private set; }
     public int SlideCount => presentation?.Slides.Count ?? 0;
@@ -97,14 +98,14 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         }
     }
 
-    public void Next() => InvokeView(view => view.Next());
-    public void Previous() => InvokeView(view => view.Previous());
+    public void Next() => InvokeView("Next", view => view.Next());
+    public void Previous() => InvokeView("Previous", view => view.Previous());
 
     public void GotoSlide(int slide)
     {
         if (slide > 0)
         {
-            InvokeView(view => view.GotoSlide(slide));
+            InvokeView("GotoSlide", view => view.GotoSlide(slide));
         }
     }
 
@@ -123,7 +124,7 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         }
         catch (COMException exception)
         {
-            LogComException(exception);
+            ReportComFailure("ActivateWindow", exception);
         }
     }
 
@@ -138,7 +139,11 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             }
 
             using var tracker = new COMReferenceTracker();
+            LogDiagnostic("StartPresentation step=SlideShowSettings 取得 begin");
             dynamic settings = tracker.Track((object)presentation.SlideShowSettings);
+            LogDiagnostic("StartPresentation step=SlideShowSettings 取得 succeeded");
+
+            LogDiagnostic("StartPresentation step=StartingSlide 設定 begin");
             if (fromCurrentSlide)
             {
                 dynamic activeWindow = tracker.Track((object)application.ActiveWindow);
@@ -150,19 +155,24 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             {
                 settings.StartingSlide = 1;
             }
+            LogDiagnostic("StartPresentation step=StartingSlide 設定 succeeded");
 
+            LogDiagnostic("StartPresentation step=Run() begin");
             dynamic window = tracker.Track((object)settings.Run());
+            LogDiagnostic("StartPresentation step=Run() succeeded");
+
+            LogDiagnostic("StartPresentation step=CurrentShowPosition 讀取 begin");
             dynamic showView = tracker.Track((object)window.View);
             CurrentShowPosition = (int)showView.CurrentShowPosition;
+            LogDiagnostic("StartPresentation step=CurrentShowPosition 讀取 succeeded");
             StateChanged?.Invoke(this, EventArgs.Empty);
         }
         catch (COMException exception)
         {
-            LogComException(exception);
+            ReportComFailure("StartPresentation", exception);
         }
     }
-
-    private void InvokeView(Action<dynamic> action)
+    private void InvokeView(string operation, Action<dynamic> action)
     {
         try
         {
@@ -181,7 +191,7 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         }
         catch (COMException exception)
         {
-            LogComException(exception);
+            ReportComFailure(operation, exception);
         }
     }
 
@@ -281,6 +291,11 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         }
     }
 
+    private void ReportComFailure(string operation, COMException exception)
+    {
+        LogComException(exception);
+        ErrorOccurred?.Invoke(this, $"{operation} 失敗：{exception.Message}");
+    }
     private static void LogComException(Exception exception)
     {
         try
