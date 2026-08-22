@@ -9,7 +9,9 @@ const CommandType = {
   Previous: 1,
   SyncRequest: 3,
   ActivatePowerPoint: 4,
-  Ping: 5
+  Ping: 5,
+  StartPresentation: 6,
+  StartPresentationFromCurrent: 7
 };
 
 let socket;
@@ -116,6 +118,8 @@ document.querySelector("#back").onclick = () => {
   sendCommand(CommandType.ActivatePowerPoint);
   setTimeout(() => sendCommand(CommandType.SyncRequest), 100);
 };
+document.querySelector("#start").onclick = () => sendCommand(CommandType.StartPresentation);
+document.querySelector("#start-current").onclick = () => sendCommand(CommandType.StartPresentationFromCurrent);
 wakeRetry.onclick = acquireWakeLock;
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") {

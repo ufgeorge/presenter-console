@@ -28,6 +28,10 @@ public sealed class UnavailablePresentationAdapter : IPresentationAdapter
     {
     }
 
+    public void StartPresentation(bool fromCurrentSlide)
+    {
+    }
+
     public void Dispose()
     {
     }

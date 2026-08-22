@@ -127,6 +127,41 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         }
     }
 
+    public void StartPresentation(bool fromCurrentSlide)
+    {
+        try
+        {
+            if (presentation is null)
+            {
+                LogDiagnostic("未開啟簡報，開始放映命令被忽略");
+                return;
+            }
+
+            using var tracker = new COMReferenceTracker();
+            dynamic settings = tracker.Track((object)presentation.SlideShowSettings);
+            if (fromCurrentSlide)
+            {
+                dynamic activeWindow = tracker.Track((object)application.ActiveWindow);
+                dynamic view = tracker.Track((object)activeWindow.View);
+                dynamic slide = tracker.Track((object)view.Slide);
+                settings.StartingSlide = (int)slide.SlideIndex;
+            }
+            else
+            {
+                settings.StartingSlide = 1;
+            }
+
+            dynamic window = tracker.Track((object)settings.Run());
+            dynamic showView = tracker.Track((object)window.View);
+            CurrentShowPosition = (int)showView.CurrentShowPosition;
+            StateChanged?.Invoke(this, EventArgs.Empty);
+        }
+        catch (COMException exception)
+        {
+            LogComException(exception);
+        }
+    }
+
     private void InvokeView(Action<dynamic> action)
     {
         try
@@ -134,6 +169,7 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             using var tracker = new COMReferenceTracker();
             if (presentation?.SlideShowWindow is not { } window)
             {
+                LogDiagnostic("未在放映模式，命令被忽略");
                 return;
             }
 
@@ -230,6 +266,21 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             Marshal.FinalReleaseComObject(application);
         }
     }
+    private static void LogDiagnostic(string message)
+    {
+        try
+        {
+            var logPath = Path.Combine(AppContext.BaseDirectory, "presenter-console.log");
+            File.AppendAllText(logPath, $"[{DateTime.Now:O}] PowerPoint adapter diagnostic: {message}{Environment.NewLine}");
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+    }
+
     private static void LogComException(Exception exception)
     {
         try

@@ -68,6 +68,12 @@ public sealed class AgentServer : IAsyncDisposable
                 case CommandType.ActivatePowerPoint:
                     presentation.ActivateWindow();
                     break;
+                case CommandType.StartPresentation:
+                    presentation.StartPresentation(fromCurrentSlide: false);
+                    break;
+                case CommandType.StartPresentationFromCurrent:
+                    presentation.StartPresentation(fromCurrentSlide: true);
+                    break;
             }
         }, null);
     }
