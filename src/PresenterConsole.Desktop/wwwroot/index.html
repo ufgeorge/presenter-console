@@ -2,10 +2,10 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#111827">
-  <link rel="manifest" href="manifest.webmanifest?v=5"><link rel="stylesheet" href="app.css?v=5"><title>Presenter Console</title>
+  <link rel="manifest" href="manifest.webmanifest?v=6"><link rel="stylesheet" href="app.css?v=6"><title>Presenter Console</title>
 </head>
 <body><main>
-  <header class="status-bar"><p id="status" data-i18n="connecting">連線中…</p><h1 id="slide">—</h1></header>
+  <header class="status-bar"><div class="status-summary"><p id="status" data-i18n="connecting">連線中…</p><button id="wake-warning-toggle" class="warning-icon" type="button" data-i18n-aria="wakeWarningExpand" aria-label="展開螢幕鎖定警告" aria-expanded="false" hidden>⚠️</button></div><h1 id="slide">—</h1></header>
   <section class="primary-area" aria-label="Speaker notes and page controls">
     <section class="notes-panel">
       <div class="notes-toolbar" aria-label="Notes display controls">
@@ -30,4 +30,4 @@
     <button id="back" type="button" data-i18n="back">↩ 回簡報</button>
     <footer id="version"></footer>
   </section>
-</main><script src="NoSleep.min.js?v=5"></script><script src="app.js?v=5"></script></body></html>
+</main><script src="NoSleep.min.js?v=6"></script><script src="app.js?v=6"></script></body></html>

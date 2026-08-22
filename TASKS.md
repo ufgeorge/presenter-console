@@ -22,6 +22,7 @@
 - [x] Issue #12：LAN HTTP Wake Lock 的 NoSleep fallback 與自動鎖定指引
 
 ## DONE
+- [x] Issue #32：Wake 警告收合、Speaker Notes 換行正規化與移除頁碼
 - [x] Issue #13：PWA 與 Agent 三語 i18n、命令防呆與手機版本標記
 - [x] Issue #20：COM 放映視窗不得由每次操作 FinalRelease
 - [x] Issue #7：發布 Office 15.0.0.0 Office.dll、加入輸出驗證並完成啟動驗證

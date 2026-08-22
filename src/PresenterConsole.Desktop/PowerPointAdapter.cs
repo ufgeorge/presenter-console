@@ -354,6 +354,11 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             for (var index = 1; index <= notesPage.Shapes.Count; index++)
             {
                 dynamic shape = tracker.Track((object)notesPage.Shapes[index]);
+                if (IsSlideNumberPlaceholder(shape, tracker))
+                {
+                    continue;
+                }
+
                 if ((int)shape.HasTextFrame != -1
                     || (int)shape.TextFrame.HasText != -1)
                 {
@@ -362,7 +367,11 @@ public sealed class PowerPointAdapter : IPresentationAdapter
 
                 dynamic textFrame = tracker.Track((object)shape.TextFrame);
                 dynamic textRange = tracker.Track((object)textFrame.TextRange);
-                notes.Add(textRange.Text);
+                var normalizedText = ((string)textRange.Text)
+                    .Replace("\v", "\n")
+                    .Replace("\r", "\n")
+                    .TrimEnd('\n');
+                notes.Add(normalizedText);
             }
 
             return string.Join(Environment.NewLine, notes);
@@ -371,6 +380,24 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         {
             ReportComFailure("ReadNotes", exception);
             return string.Empty;
+        }
+    }
+
+    private static bool IsSlideNumberPlaceholder(dynamic shape, COMReferenceTracker tracker)
+    {
+        try
+        {
+            if ((int)shape.Type != 14)
+            {
+                return false;
+            }
+
+            dynamic placeholderFormat = tracker.Track((object)shape.PlaceholderFormat);
+            return (int)placeholderFormat.Type == 13;
+        }
+        catch (COMException)
+        {
+            return false;
         }
     }
 

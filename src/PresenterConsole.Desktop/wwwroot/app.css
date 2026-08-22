@@ -2,7 +2,9 @@
 body { margin: 0; background: #111827; color: #f9fafb; }
 main { box-sizing: border-box; display: flex; flex-direction: column; gap: var(--page-gap); min-height: 100dvh; max-width: 900px; margin: auto; padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left)); }
 .status-bar { display: flex; align-items: center; justify-content: space-between; min-height: 32px; gap: 12px; }
+.status-summary { display: flex; align-items: center; min-width: 0; gap: 6px; }
 #status { margin: 0; overflow: hidden; color: #d1d5db; font-size: .85rem; text-overflow: ellipsis; white-space: nowrap; }
+.warning-icon { min-width: 32px; padding: 2px 5px; color: #111827; background: #fbbf24; font-size: 1rem; line-height: 1.2; }
 h1 { flex: 0 0 auto; text-align: center; font-size: clamp(1.7rem, 6vw, 3rem); margin: 0; }
 .primary-area { display: flex; flex: 1 1 auto; flex-direction: column; gap: var(--page-gap); min-height: 0; }
   .notes-panel { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; overflow: hidden; padding: 10px; background: #1f2937; border-radius: 12px; }
