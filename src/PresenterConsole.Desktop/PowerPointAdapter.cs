@@ -6,17 +6,22 @@ namespace PresenterConsole.Desktop;
 public sealed class PowerPointAdapter : IPresentationAdapter
 {
     private readonly PowerPoint.Application application;
+    private readonly SynchronizationContext uiContext;
     private PowerPoint.Presentation? presentation;
+    private int slideCount;
+    private string currentNotes = string.Empty;
 
     public event EventHandler? StateChanged;
     public event EventHandler<string>? ErrorOccurred;
 
     public int CurrentShowPosition { get; private set; }
-    public int SlideCount => presentation?.Slides.Count ?? 0;
-    public string CurrentNotes => ReadNotes(CurrentShowPosition);
+    public int SlideCount => slideCount;
+    public string CurrentNotes => currentNotes;
 
-    public PowerPointAdapter()
+    public PowerPointAdapter(SynchronizationContext? uiContext = null)
     {
+        this.uiContext = uiContext ?? SynchronizationContext.Current
+            ?? throw new InvalidOperationException("PowerPoint adapter 必須在 UI thread 建立。");
         application = TryGetActiveApplication() ?? CreateApplication();
         application.PresentationOpen += OnPresentationOpen;
         application.PresentationClose += OnPresentationClose;
@@ -65,37 +70,47 @@ public sealed class PowerPointAdapter : IPresentationAdapter
 
     private void OnPresentationOpen(PowerPoint.Presentation opened)
     {
-        Attach(opened);
+        PostToUi(() => Attach(opened));
     }
 
     private void OnPresentationClose(PowerPoint.Presentation closed)
     {
-        if (ReferenceEquals(presentation, closed))
+        PostToUi(() =>
         {
-            presentation = null;
-            CurrentShowPosition = 0;
-        }
+            if (ReferenceEquals(presentation, closed))
+            {
+                presentation = null;
+                slideCount = 0;
+                currentNotes = string.Empty;
+                CurrentShowPosition = 0;
+            }
 
-        StateChanged?.Invoke(this, EventArgs.Empty);
+            StateChanged?.Invoke(this, EventArgs.Empty);
+        });
     }
 
     private void Attach(PowerPoint.Presentation attached)
     {
         presentation = attached;
+        slideCount = attached.Slides.Count;
         RefreshActualState();
     }
 
     private void OnSlideShowNextSlide(PowerPoint.SlideShowWindow window)
     {
-        try
+        PostToUi(() =>
         {
-            CurrentShowPosition = window.View.CurrentShowPosition;
-            StateChanged?.Invoke(this, EventArgs.Empty);
-        }
-        catch (COMException exception)
-        {
-            LogComException(exception);
-        }
+            try
+            {
+                CurrentShowPosition = window.View.CurrentShowPosition;
+                currentNotes = ReadNotes(CurrentShowPosition);
+                StateChanged?.Invoke(this, EventArgs.Empty);
+            }
+            catch (COMException exception)
+            {
+                ReportComFailure("SlideShowNextSlide", exception);
+            }
+        });
     }
 
     public void Next() => InvokeView("Next", view => view.Next());
@@ -168,6 +183,7 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             dynamic showView = window.View;
             CurrentShowPosition = (int)showView.CurrentShowPosition;
             LogDiagnostic("StartPresentation step=CurrentShowPosition 讀取 succeeded");
+            currentNotes = ReadNotes(CurrentShowPosition);
             StateChanged?.Invoke(this, EventArgs.Empty);
         }
         catch (COMException exception)
@@ -190,6 +206,7 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             dynamic view = window.View;
             action(view);
             CurrentShowPosition = (int)view.CurrentShowPosition;
+            currentNotes = ReadNotes(CurrentShowPosition);
             StateChanged?.Invoke(this, EventArgs.Empty);
         }
         catch (COMException exception)
@@ -202,20 +219,22 @@ public sealed class PowerPointAdapter : IPresentationAdapter
     {
         try
         {
-            using var tracker = new COMReferenceTracker();
             if (presentation?.SlideShowWindow is not { } window)
             {
+                CurrentShowPosition = 0;
+                currentNotes = string.Empty;
                 StateChanged?.Invoke(this, EventArgs.Empty);
                 return;
             }
 
             dynamic view = window.View;
             CurrentShowPosition = (int)view.CurrentShowPosition;
+            currentNotes = ReadNotes(CurrentShowPosition);
             StateChanged?.Invoke(this, EventArgs.Empty);
         }
         catch (COMException exception)
         {
-            LogComException(exception);
+            ReportComFailure("RefreshActualState", exception);
         }
     }
 
@@ -251,7 +270,7 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         }
         catch (COMException exception)
         {
-            LogComException(exception);
+            ReportComFailure("ReadNotes", exception);
             return string.Empty;
         }
     }
@@ -297,8 +316,28 @@ public sealed class PowerPointAdapter : IPresentationAdapter
     private void ReportComFailure(string operation, COMException exception)
     {
         LogComException(exception);
-        ErrorOccurred?.Invoke(this, $"{operation} 失敗：{exception.Message}");
+        ErrorOccurred?.Invoke(this, IsPowerPointUnavailable(exception)
+            ? "PowerPoint 已關閉，請重新開啟"
+            : $"{operation} 失敗：{exception.Message}");
     }
+    private void PostToUi(Action action)
+    {
+        uiContext.Post(_ =>
+        {
+            try
+            {
+                action();
+            }
+            catch (COMException exception)
+            {
+                ReportComFailure("COM 事件", exception);
+            }
+        }, null);
+    }
+
+    private static bool IsPowerPointUnavailable(COMException exception) =>
+        exception.HResult == unchecked((int)0x800706BA);
+
     private static void LogComException(Exception exception)
     {
         try

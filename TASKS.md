@@ -12,7 +12,10 @@
 - [x] Issue #11：實作與驗證
 - [x] Issue #18：實作與驗證
 - [x] Issue #20：實作與驗證
+- [x] Issue #22：實作與驗證
 
+
+- [x] Issue #22：COM 事件 marshal 到 UI thread、COM 狀態快取與 RPC 崩潰診斷
 
 ## DONE
 - [x] Issue #20：COM 放映視窗不得由每次操作 FinalRelease
