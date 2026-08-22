@@ -40,7 +40,7 @@ button {
   padding: 16px;
 }
 
-#presentation-controls {
+.presentation-controls {
   display: flex;
   gap: 12px;
   margin-top: 16px;
