@@ -8,7 +8,7 @@ const CommandType = {
   StartPresentation: 6,
   StartPresentationFromCurrent: 7
 };
-const APP_VERSION = "v5";
+const APP_VERSION = "v6";
 
 const LANGUAGES = {
   "zh-TW": {
@@ -23,6 +23,8 @@ const LANGUAGES = {
     rejected: "操作失敗：命令被拒絕，請重試",
     sendFailed: "操作失敗：命令送出失敗，請重試",
     wakeTitle: "⚠ 螢幕可能會自動鎖定",
+    wakeWarningExpand: "展開螢幕鎖定警告",
+    wakeWarningCollapse: "收合螢幕鎖定警告",
     wakeText: "請先點擊「重新啟用」；若仍無法保持亮著，請暫時關閉裝置的自動鎖定。",
     wakeSettings: "查看設定路徑",
     ios: "iPhone/iPad：設定 → 螢幕顯示與亮度 → 自動鎖定 → 永不",
@@ -56,6 +58,8 @@ const LANGUAGES = {
     rejected: "操作失败：命令被拒绝，请重试",
     sendFailed: "操作失败：命令发送失败，请重试",
     wakeTitle: "⚠ 屏幕可能会自动锁定",
+    wakeWarningExpand: "展开屏幕锁定警告",
+    wakeWarningCollapse: "收起屏幕锁定警告",
     wakeText: "请先点击“重新启用”；若仍无法保持亮屏，请暂时关闭设备的自动锁定。",
     wakeSettings: "查看设置路径",
     ios: "iPhone/iPad：设置 → 显示与亮度 → 自动锁定 → 永不",
@@ -89,6 +93,8 @@ const LANGUAGES = {
     rejected: "Operation failed: command was rejected. Please try again.",
     sendFailed: "Operation failed: command could not be sent. Please try again.",
     wakeTitle: "⚠ Screen may lock automatically",
+    wakeWarningExpand: "Expand screen-lock warning",
+    wakeWarningCollapse: "Collapse screen-lock warning",
     wakeText: "Tap “Re-enable” first. If the screen still turns off, temporarily disable auto-lock on your device.",
     wakeSettings: "View settings",
     ios: "iPhone/iPad: Settings → Display & Brightness → Auto-Lock → Never",
@@ -127,6 +133,7 @@ const status = document.querySelector("#status");
 const slide = document.querySelector("#slide");
 const notes = document.querySelector("#notes");
 const wakeWarning = document.querySelector("#wake-warning");
+const wakeWarningToggle = document.querySelector("#wake-warning-toggle");
 const wakeRetry = document.querySelector("#wake-retry");
 let socket;
 let sequence = 0;
@@ -177,8 +184,19 @@ function setupNotesPreferences() {
 }
 
 function setWakeLockWarning(visible, fallbackPending = false) {
-  wakeWarning.hidden = !visible;
+  wakeWarningToggle.hidden = !visible;
+  if (!visible) {
+    wakeWarning.hidden = true;
+    wakeWarningToggle.setAttribute("aria-expanded", "false");
+  }
   wakeFallbackPending = fallbackPending;
+}
+
+function toggleWakeWarning() {
+  const expanded = wakeWarningToggle.getAttribute("aria-expanded") === "true";
+  wakeWarning.hidden = expanded;
+  wakeWarningToggle.setAttribute("aria-expanded", String(!expanded));
+  wakeWarningToggle.setAttribute("aria-label", expanded ? text.wakeWarningExpand : text.wakeWarningCollapse);
 }
 
 async function acquireWakeLock() {
@@ -304,6 +322,7 @@ document.querySelector("#back").onclick = () => {
 };
 document.querySelector("#start").onclick = () => sendCommand(CommandType.StartPresentation);
 document.querySelector("#start-current").onclick = () => sendCommand(CommandType.StartPresentationFromCurrent);
+wakeWarningToggle.onclick = toggleWakeWarning;
 wakeRetry.onclick = acquireNoSleepFallback;
 
 document.addEventListener("click", () => {
@@ -315,5 +334,5 @@ document.addEventListener("visibilitychange", () => {
 
 applyLanguage();
 setupNotesPreferences();
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=5");
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=6");
 connect();

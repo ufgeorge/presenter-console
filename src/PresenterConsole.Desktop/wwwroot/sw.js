@@ -1,4 +1,4 @@
-const cacheName = "presenter-v5";
+const cacheName = "presenter-v6";
 const appShell = ["/", "/index.html", "/app.css", "/app.js", "/NoSleep.min.js", "/manifest.webmanifest"];
 
 self.addEventListener("install", event => {
