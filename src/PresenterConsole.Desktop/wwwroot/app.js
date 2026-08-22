@@ -1,126 +1,21 @@
 const MessageType = { State: 2, Error: 5, Pong: 6 };
 const CommandType = { Next: 0, Previous: 1, SyncRequest: 3, ActivatePowerPoint: 4, Ping: 5, StartPresentation: 6, StartPresentationFromCurrent: 7 };
-let socket;
-let sequence = 0;
-let heartbeatTimer;
-let wakeLock;
-let noSleep;
-let wakeFallbackPending = false;
-
-const status = document.querySelector("#status");
-const slide = document.querySelector("#slide");
-const notes = document.querySelector("#notes");
-const wakeWarning = document.querySelector("#wake-warning");
-const wakeRetry = document.querySelector("#wake-retry");
-
-function setWakeLockWarning(visible, fallbackPending = false) {
-  wakeWarning.hidden = !visible;
-  wakeFallbackPending = fallbackPending;
-}
-
-async function acquireWakeLock() {
-  if (!("wakeLock" in navigator)) {
-    await acquireNoSleepFallback();
-    return;
-  }
-
-  try {
-    wakeLock = await navigator.wakeLock.request("screen");
-    wakeLock.addEventListener("release", () => {
-      if (document.visibilityState === "visible") {
-        setWakeLockWarning(true);
-      }
-    });
-    setWakeLockWarning(false);
-  } catch {
-    await acquireNoSleepFallback();
-  }
-}
-
-async function acquireNoSleepFallback() {
-  noSleep ??= new NoSleep();
-
-  try {
-    await noSleep.enable();
-    setWakeLockWarning(false);
-    status.textContent = "已連線（螢幕保持亮著）";
-  } catch {
-    setWakeLockWarning(true, true);
-    status.textContent = "已連線（需要點擊才能保持螢幕亮著）";
-  }
-}
-
-function renderState(state) {
-  if (!state) return;
-  slide.textContent = `第 ${state.currentShowPosition}/${state.slideCount} 頁`;
-  notes.textContent = state.notes || "（本頁沒有 Notes）";
-}
-
-function createCommandId() {
-  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
-  bytes[6] = (bytes[6] & 0x0f) | 0x40;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  return [...bytes].map((byte, index) => {
-    const hex = byte.toString(16).padStart(2, "0");
-    return [4, 6, 8, 10].includes(index) ? `-${hex}` : hex;
-  }).join("");
-}
-
-function sendCommand(type, slideNumber = null) {
-  if (socket?.readyState !== WebSocket.OPEN) return;
-  socket.send(JSON.stringify({ type: 1, command: {
-    commandId: createCommandId(), sequence: ++sequence, type, slide: slideNumber
-  }}));
-}
-
-function connect() {
-  const token = new URLSearchParams(location.search).get("token");
-  if (!token) {
-    status.textContent = "缺少配對 QR，請重新掃描";
-    return;
-  }
-  const protocol = location.protocol === "https:" ? "wss" : "ws";
-  socket = new WebSocket(`${protocol}://${location.host}/ws?token=${encodeURIComponent(token)}`);
-  socket.onopen = async () => {
-    status.textContent = "已連線";
-    sendCommand(CommandType.SyncRequest);
-    await acquireWakeLock();
-    clearInterval(heartbeatTimer);
-    heartbeatTimer = setInterval(() => sendCommand(CommandType.Ping), 1500);
-  };
-  socket.onmessage = event => {
-    const message = JSON.parse(event.data);
-    if (message.type === MessageType.State || message.type === MessageType.Pong) {
-      if (message.state) sequence = Math.max(sequence, message.state.sequence);
-      renderState(message.state);
-    } else if (message.type === MessageType.Error) {
-      status.textContent = `操作失敗：${message.error || '命令未執行，請重試'}`;
-    }
-  };
-  socket.onclose = () => {
-    clearInterval(heartbeatTimer);
-    status.textContent = "斷線，3 秒後重連…";
-    setTimeout(connect, 3000);
-  };
-  socket.onerror = () => { status.textContent = "連線失敗，請確認電腦與手機在同一網路"; };
-}
-
-document.querySelector("#prev").onclick = () => sendCommand(CommandType.Previous);
-document.querySelector("#next").onclick = () => sendCommand(CommandType.Next);
-document.querySelector("#back").onclick = () => {
-  sendCommand(CommandType.ActivatePowerPoint);
-  setTimeout(() => sendCommand(CommandType.SyncRequest), 100);
+const APP_VERSION = "v4";
+const LANGUAGES = {
+  "zh-TW": { connecting: "連線中…", connected: "已連線", reconnecting: "斷線，3 秒後重連…", failed: "連線失敗，請確認電腦與手機在同一網路", missingToken: "缺少配對 QR，請重新掃描", slide: (c, t) => `第 ${c}/${t} 頁`, noNotes: "（本頁沒有 Notes）", notFetched: "尚未取得講稿", rejected: "操作失敗：命令被拒絕，請重試", sendFailed: "操作失敗：命令送出失敗，請重試", wakeTitle: "⚠ 螢幕可能會自動鎖定", wakeText: "請先點擊「重新啟用」；若仍無法保持亮著，請暫時關閉裝置的自動鎖定。", wakeSettings: "查看設定路徑", ios: "iPhone/iPad：設定 → 螢幕顯示與亮度 → 自動鎖定 → 永不", android: "Android：設定 → 顯示 → 螢幕逾時／休眠 → 選擇較長時間", retryWake: "重新啟用", start: "▶ 開始簡報", startCurrent: "從目前頁開始", back: "↩ 回簡報", prev: "◀ PREV", next: "NEXT ▶", footer: "手機版本" },
+  "zh-CN": { connecting: "连接中…", connected: "已连接", reconnecting: "断线，3 秒后重连…", failed: "连接失败，请确认电脑与手机在同一网络", missingToken: "缺少配对 QR，请重新扫描", slide: (c, t) => `第 ${c}/${t} 页`, noNotes: "（本页没有 Notes）", notFetched: "尚未取得讲稿", rejected: "操作失败：命令被拒绝，请重试", sendFailed: "操作失败：命令发送失败，请重试", wakeTitle: "⚠ 屏幕可能会自动锁定", wakeText: "请先点击“重新启用”；若仍无法保持亮屏，请暂时关闭设备的自动锁定。", wakeSettings: "查看设置路径", ios: "iPhone/iPad：设置 → 显示与亮度 → 自动锁定 → 永不", android: "Android：设置 → 显示 → 屏幕超时／休眠 → 选择较长时间", retryWake: "重新启用", start: "▶ 开始演示", startCurrent: "从当前页开始", back: "↩ 返回演示", prev: "◀ PREV", next: "NEXT ▶", footer: "手机版本" },
+  en: { connecting: "Connecting…", connected: "Connected", reconnecting: "Disconnected, reconnecting in 3 seconds…", failed: "Connection failed. Check that your computer and phone are on the same network.", missingToken: "Pairing QR is missing. Please scan again.", slide: (c, t) => `Slide ${c}/${t}`, noNotes: "(No notes for this slide)", notFetched: "Speaker notes not available yet", rejected: "Operation failed: command was rejected. Please try again.", sendFailed: "Operation failed: command could not be sent. Please try again.", wakeTitle: "⚠ Screen may lock automatically", wakeText: "Tap “Re-enable” first. If the screen still turns off, temporarily disable auto-lock on your device.", wakeSettings: "View settings", ios: "iPhone/iPad: Settings → Display & Brightness → Auto-Lock → Never", android: "Android: Settings → Display → Screen timeout / Sleep → choose a longer time", retryWake: "Re-enable", start: "▶ Start presentation", startCurrent: "Start from current slide", back: "↩ Return to presentation", prev: "◀ PREV", next: "NEXT ▶", footer: "Phone version" }
 };
-document.querySelector("#start").onclick = () => sendCommand(CommandType.StartPresentation);
-document.querySelector("#start-current").onclick = () => sendCommand(CommandType.StartPresentationFromCurrent);
-wakeRetry.onclick = acquireNoSleepFallback;
-document.addEventListener("click", () => {
-  if (wakeFallbackPending) acquireNoSleepFallback();
-}, { capture: true });
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") acquireWakeLock();
-});
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
-connect();
+function getLanguage() { const forced = new URLSearchParams(location.search).get("lang"); const value = forced || navigator.language || "zh-TW"; if (value.toLowerCase().startsWith("en")) return "en"; if (value.toLowerCase().startsWith("zh-cn") || value.toLowerCase().startsWith("zh-sg")) return "zh-CN"; return "zh-TW"; }
+const text = LANGUAGES[getLanguage()];
+const status = document.querySelector("#status"), slide = document.querySelector("#slide"), notes = document.querySelector("#notes"), wakeWarning = document.querySelector("#wake-warning"), wakeRetry = document.querySelector("#wake-retry");
+let socket, sequence = 0, heartbeatTimer, wakeLock, noSleep, wakeFallbackPending = false;
+function applyLanguage() { document.documentElement.lang = getLanguage() === "en" ? "en" : getLanguage() === "zh-CN" ? "zh-Hans" : "zh-Hant"; for (const node of document.querySelectorAll("[data-i18n]")) node.textContent = text[node.dataset.i18n]; document.querySelector("#version").textContent = `${text.footer} ${APP_VERSION}`; }
+function setWakeLockWarning(visible, fallbackPending = false) { wakeWarning.hidden = !visible; wakeFallbackPending = fallbackPending; }
+async function acquireWakeLock() { if (!("wakeLock" in navigator)) return acquireNoSleepFallback(); try { wakeLock = await navigator.wakeLock.request("screen"); wakeLock.addEventListener("release", () => { if (document.visibilityState === "visible") setWakeLockWarning(true); }); setWakeLockWarning(false); } catch { await acquireNoSleepFallback(); } }
+async function acquireNoSleepFallback() { noSleep ??= new NoSleep(); try { await noSleep.enable(); setWakeLockWarning(false); } catch { setWakeLockWarning(true, true); } }
+function renderState(state) { if (!state) return; slide.textContent = text.slide(state.currentShowPosition, state.slideCount); notes.textContent = state.notes || text.noNotes; }
+function createCommandId() { if (typeof crypto.randomUUID === "function") return crypto.randomUUID(); const bytes = new Uint8Array(16); crypto.getRandomValues(bytes); bytes[6] = (bytes[6] & 15) | 64; bytes[8] = (bytes[8] & 63) | 128; return [...bytes].map((b, i) => [4, 6, 8, 10].includes(i) ? `-${b.toString(16).padStart(2, "0")}` : b.toString(16).padStart(2, "0")).join(""); }
+function sendCommand(type, slideNumber = null) { try { if (socket?.readyState !== WebSocket.OPEN) { status.textContent = text.sendFailed; return false; } socket.send(JSON.stringify({ type: 1, command: { commandId: createCommandId(), sequence: ++sequence, type, slide: slideNumber } })); return true; } catch (error) { status.textContent = `${text.sendFailed} (${error.message || error})`; return false; } }
+function connect() { const token = new URLSearchParams(location.search).get("token"); if (!token) { status.textContent = text.missingToken; return; } status.textContent = text.connecting; const protocol = location.protocol === "https:" ? "wss" : "ws"; socket = new WebSocket(`${protocol}://${location.host}/ws?token=${encodeURIComponent(token)}`); socket.onopen = async () => { status.textContent = text.connected; sendCommand(CommandType.SyncRequest); await acquireWakeLock(); clearInterval(heartbeatTimer); heartbeatTimer = setInterval(() => sendCommand(CommandType.Ping), 1500); }; socket.onmessage = event => { const message = JSON.parse(event.data); if (message.type === MessageType.State || message.type === MessageType.Pong) { if (message.state) sequence = Math.max(sequence, message.state.sequence); renderState(message.state); } else if (message.type === MessageType.Error) status.textContent = message.error || text.rejected; }; socket.onclose = () => { clearInterval(heartbeatTimer); status.textContent = text.reconnecting; setTimeout(connect, 3000); }; socket.onerror = () => { status.textContent = text.failed; }; }
+document.querySelector("#prev").onclick = () => sendCommand(CommandType.Previous); document.querySelector("#next").onclick = () => sendCommand(CommandType.Next); document.querySelector("#back").onclick = () => { if (sendCommand(CommandType.ActivatePowerPoint)) setTimeout(() => sendCommand(CommandType.SyncRequest), 100); }; document.querySelector("#start").onclick = () => sendCommand(CommandType.StartPresentation); document.querySelector("#start-current").onclick = () => sendCommand(CommandType.StartPresentationFromCurrent); wakeRetry.onclick = acquireNoSleepFallback; document.addEventListener("click", () => { if (wakeFallbackPending) acquireNoSleepFallback(); }, { capture: true }); document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") acquireWakeLock(); }); applyLanguage(); if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=4"); connect();

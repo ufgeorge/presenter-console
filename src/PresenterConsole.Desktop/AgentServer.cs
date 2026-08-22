@@ -95,6 +95,7 @@ public sealed class AgentServer : IAsyncDisposable
         }
 
         using var socket = await context.WebSockets.AcceptWebSocketAsync();
+        WriteDiagnosticLog("WS client connected");
         lock (sockets)
         {
             sockets.Add(socket);
@@ -121,6 +122,8 @@ public sealed class AgentServer : IAsyncDisposable
                     continue;
                 }
 
+                WriteDiagnosticLog($"WS command: type={command.Type} seq={command.Sequence}");
+
                 if (command.Type == CommandType.SyncRequest)
                 {
                     await SendSafelyAsync(socket, new WireMessage(MessageType.State, State: State()));
@@ -137,13 +140,14 @@ public sealed class AgentServer : IAsyncDisposable
                             socket,
                             new WireMessage(
                                 MessageType.Error,
-                                Error: "命令被拒絕（sequence 過舊或命令重複），請重整頁面後重試"));
+                                Error: Localization.CommandRejected));
                     }
                 }
             }
         }
         finally
         {
+            WriteDiagnosticLog("WS client disconnected");
             RemoveSocket(socket);
         }
     }
@@ -232,6 +236,17 @@ public sealed class AgentServer : IAsyncDisposable
         {
             sockets.Remove(socket);
         }
+    }
+
+    private static void WriteDiagnosticLog(string message)
+    {
+        try
+        {
+            var logPath = Path.Combine(AppContext.BaseDirectory, "presenter-console.log");
+            File.AppendAllText(logPath, $"[{DateTime.Now:O}] {message}{Environment.NewLine}");
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
     }
 
     private static string GetLanAddress()
