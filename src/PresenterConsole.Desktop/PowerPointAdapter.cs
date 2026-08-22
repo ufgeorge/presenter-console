@@ -6,7 +6,7 @@ namespace PresenterConsole.Desktop;
 
 public sealed class PowerPointAdapter : IPresentationAdapter
 {
-    private readonly PowerPoint.Application application;
+    private PowerPoint.Application application;
     private readonly SynchronizationContext uiContext;
     private PowerPoint.Presentation? presentation;
     private int slideCount;
@@ -71,6 +71,64 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         IntPtr reserved,
         [MarshalAs(UnmanagedType.Interface)] out object activeObject);
 
+    private void SubscribeToApplication(PowerPoint.Application target)
+    {
+        target.PresentationOpen += OnPresentationOpen;
+        target.PresentationClose += OnPresentationClose;
+        target.SlideShowBegin += OnSlideShowBegin;
+        target.SlideShowEnd += OnSlideShowEnd;
+        target.SlideShowNextSlide += OnSlideShowNextSlide;
+    }
+
+    private void UnsubscribeFromApplication(PowerPoint.Application target)
+    {
+        try
+        {
+            target.PresentationOpen -= OnPresentationOpen;
+            target.PresentationClose -= OnPresentationClose;
+            target.SlideShowBegin -= OnSlideShowBegin;
+            target.SlideShowEnd -= OnSlideShowEnd;
+            target.SlideShowNextSlide -= OnSlideShowNextSlide;
+        }
+        catch (COMException exception)
+        {
+            LogComException(exception);
+        }
+    }
+
+    private void AttachOpenPresentations(PowerPoint.Application target)
+    {
+        foreach (PowerPoint.Presentation existing in target.Presentations)
+        {
+            Attach(existing);
+        }
+    }
+
+    private bool TryReconnectPowerPoint()
+    {
+        try
+        {
+            LogDiagnostic("PowerPoint RPC 斷線，重新取得 application begin");
+            var reconnected = TryGetActiveApplication();
+            if (reconnected is null)
+            {
+                LogDiagnostic("PowerPoint RPC 斷線，重新取得 application failed");
+                return false;
+            }
+
+            UnsubscribeFromApplication(application);
+            application = reconnected;
+            SubscribeToApplication(application);
+            AttachOpenPresentations(application);
+            LogDiagnostic("PowerPoint RPC 斷線，重新取得 application succeeded");
+            return true;
+        }
+        catch (COMException exception)
+        {
+            LogComException(exception);
+            return false;
+        }
+    }
     private void OnPresentationOpen(PowerPoint.Presentation opened)
     {
         PostToUi(() => Attach(opened));
@@ -167,55 +225,58 @@ public sealed class PowerPointAdapter : IPresentationAdapter
 
     public void StartPresentation(bool fromCurrentSlide)
     {
-        try
+        if (presentation is null)
         {
-            if (presentation is null)
+            LogDiagnostic("未開啟簡報，開始放映命令被忽略");
+            return;
+        }
+
+        var key = fromCurrentSlide ? "+{F5}" : "{F5}";
+        LogDiagnostic($"StartPresentation path=SendKeys key={key}");
+
+        for (var attempt = 1; attempt <= 3; attempt++)
+        {
+            try
             {
-                LogDiagnostic("未開啟簡報，開始放映命令被忽略");
+                application.Activate();
+                LogDiagnostic($"StartPresentation attempt={attempt} Activate succeeded; waiting for focus");
+                Thread.Sleep(300);
+                SendKeys.SendWait(key);
+                LogDiagnostic($"StartPresentation attempt={attempt} F5 sent");
+                Thread.Sleep(400);
+
+                if (IsSlideShowWindowAlive())
+                {
+                    LogDiagnostic($"StartPresentation attempt={attempt} window alive");
+                    RefreshActualState();
+                    return;
+                }
+
+                LogDiagnostic($"StartPresentation attempt={attempt} window missing");
+            }
+            catch (COMException exception) when (IsPowerPointUnavailable(exception))
+            {
+                LogDiagnostic($"StartPresentation attempt={attempt} PowerPoint RPC disconnected");
+                if (!TryReconnectPowerPoint())
+                {
+                    ReportComFailure("StartPresentation", exception);
+                    return;
+                }
+            }
+            catch (COMException exception)
+            {
+                ReportComFailure("StartPresentation", exception);
                 return;
             }
-
-            var startingSlide = GetStartingSlide(fromCurrentSlide);
-            LogDiagnostic($"StartPresentation path=SendKeys startingSlide={startingSlide}");
-            application.Activate();
-            SendKeys.SendWait(fromCurrentSlide ? "+{F5}" : "{F5}");
-            LogDiagnostic("StartPresentation path=SendKeys F5 sent");
-            Thread.Sleep(400);
-            if (IsSlideShowWindowAlive())
+            catch (InvalidOperationException exception)
             {
-                LogDiagnostic("StartPresentation path=SendKeys window alive");
-                RefreshActualState();
-                return;
+                LogDiagnostic($"StartPresentation attempt={attempt} SendKeys 失敗：{exception.Message}");
             }
+        }
 
-            LogDiagnostic("StartPresentation path=SendKeys window missing; fallback=Run()");
-            StartPresentationWithComRun(fromCurrentSlide, startingSlide);
-        }
-        catch (COMException exception)
-        {
-            ReportComFailure("StartPresentation", exception);
-        }
-        catch (InvalidOperationException exception)
-        {
-            LogDiagnostic($"StartPresentation SendKeys 失敗，fallback=Run()：{exception.Message}");
-            StartPresentationWithComRun(fromCurrentSlide, GetStartingSlide(fromCurrentSlide));
-        }
+        LogDiagnostic("StartPresentation SendKeys 重試耗盡；不使用 COM 放映 fallback");
+        ErrorOccurred?.Invoke(this, "開始簡報失敗，請手動在電腦按 F5");
     }
-
-    private int GetStartingSlide(bool fromCurrentSlide)
-    {
-        if (!fromCurrentSlide)
-        {
-            return 1;
-        }
-
-        using var tracker = new COMReferenceTracker();
-        dynamic activeWindow = tracker.Track((object)application.ActiveWindow);
-        dynamic view = tracker.Track((object)activeWindow.View);
-        dynamic slide = tracker.Track((object)view.Slide);
-        return (int)slide.SlideIndex;
-    }
-
     private bool IsSlideShowWindowAlive()
     {
         try
@@ -229,32 +290,6 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         }
     }
 
-    private void StartPresentationWithComRun(bool fromCurrentSlide, int startingSlide)
-    {
-        try
-        {
-            using var tracker = new COMReferenceTracker();
-            LogDiagnostic("StartPresentation step=SlideShowSettings 取得 begin");
-            dynamic settings = tracker.Track((object)presentation!.SlideShowSettings);
-            LogDiagnostic("StartPresentation step=SlideShowSettings 取得 succeeded");
-            LogDiagnostic("StartPresentation step=StartingSlide 設定 begin");
-            settings.StartingSlide = fromCurrentSlide ? startingSlide : 1;
-            LogDiagnostic("StartPresentation step=StartingSlide 設定 succeeded");
-            LogDiagnostic("StartPresentation step=Run() begin");
-            dynamic window = settings.Run();
-            LogDiagnostic("StartPresentation step=Run() succeeded");
-            LogDiagnostic("StartPresentation step=CurrentShowPosition 讀取 begin");
-            dynamic showView = window.View;
-            CurrentShowPosition = (int)showView.CurrentShowPosition;
-            LogDiagnostic("StartPresentation step=CurrentShowPosition 讀取 succeeded");
-            currentNotes = ReadNotes(CurrentShowPosition);
-            StateChanged?.Invoke(this, EventArgs.Empty);
-        }
-        catch (COMException exception)
-        {
-            ReportComFailure("StartPresentation fallback", exception);
-        }
-    }
     private void InvokeView(string operation, Action<dynamic> action)
     {
         try
@@ -382,9 +417,20 @@ public sealed class PowerPointAdapter : IPresentationAdapter
     private void ReportComFailure(string operation, COMException exception)
     {
         LogComException(exception);
-        ErrorOccurred?.Invoke(this, IsPowerPointUnavailable(exception)
-            ? "PowerPoint 已關閉，請重新開啟"
-            : $"{operation} 失敗：{exception.Message}");
+        if (IsPowerPointUnavailable(exception))
+        {
+            LogDiagnostic($"{operation} 發生 PowerPoint RPC 斷線");
+            if (TryReconnectPowerPoint())
+            {
+                ErrorOccurred?.Invoke(this, "PowerPoint 連線已恢復，請重試");
+                return;
+            }
+
+            ErrorOccurred?.Invoke(this, "PowerPoint 已關閉，請重新開啟");
+            return;
+        }
+
+        ErrorOccurred?.Invoke(this, $"{operation} 失敗：{exception.Message}");
     }
     private void PostToUi(Action action)
     {
