@@ -1,5 +1,5 @@
-const cacheName = "presenter-v2";
-const appShell = ["/", "/index.html", "/app.css", "/app.js", "/manifest.webmanifest"];
+const cacheName = "presenter-v3";
+const appShell = ["/", "/index.html", "/app.css", "/app.js", "/NoSleep.min.js", "/manifest.webmanifest"];
 
 self.addEventListener("install", event => {
   event.waitUntil(

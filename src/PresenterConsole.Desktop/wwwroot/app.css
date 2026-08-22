@@ -73,7 +73,7 @@ nav button {
 
 .warning {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 12px;
@@ -87,4 +87,12 @@ nav button {
   padding: 8px 12px;
   color: #111827;
   background: #fff;
+}
+.warning p {
+  margin: 8px 0;
+}
+
+.warning ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
 }
