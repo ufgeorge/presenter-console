@@ -3,11 +3,13 @@
 ## TODO
 - [x] Issue #9：修復手機 NEXT/PREV 控制、拒絕命令診斷與 PowerPoint COM log
 - [x] Issue #11：手機開始簡報按鈕與放映依賴診斷
+- [x] Issue #18：修復非 secure context 下 crypto.randomUUID 導致手機命令無法送出
 
 
 ## IN PROGRESS
 - [x] Issue #9：實作與驗證
 - [x] Issue #11：實作與驗證
+- [x] Issue #18：實作與驗證
 
 
 ## DONE
