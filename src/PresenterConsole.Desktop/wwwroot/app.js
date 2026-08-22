@@ -8,7 +8,7 @@ const CommandType = {
   StartPresentation: 6,
   StartPresentationFromCurrent: 7
 };
-const APP_VERSION = "v6";
+const APP_VERSION = "v7";
 
 const LANGUAGES = {
   "zh-TW": {
@@ -334,5 +334,5 @@ document.addEventListener("visibilitychange", () => {
 
 applyLanguage();
 setupNotesPreferences();
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=6");
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=7");
 connect();

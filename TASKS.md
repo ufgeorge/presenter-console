@@ -1,6 +1,7 @@
 # Sprint 1 PR review fixes
 
 ## TODO
+- [x] Issue #34：限制 Notes 版面高度、確保控制按鈕可見並更新 PWA 快取版本
 - [x] Issue #9：修復手機 NEXT/PREV 控制、拒絕命令診斷與 PowerPoint COM log
 - [x] Issue #11：手機開始簡報按鈕與放映依賴診斷
 - [x] Issue #18：修復非 secure context 下 crypto.randomUUID 導致手機命令無法送出
@@ -8,6 +9,7 @@
 
 
 ## IN PROGRESS
+- [x] Issue #34：限制 Notes 版面高度、確保控制按鈕可見並更新 PWA 快取版本
 - [x] Issue #30：手機 Notes 與換頁控制響應式版面、字級/字色設定
 - [x] Issue #9：實作與驗證
 - [x] Issue #11：實作與驗證

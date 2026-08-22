@@ -1,6 +1,6 @@
 :root { color-scheme: dark; font-family: system-ui, sans-serif; --page-gap: 12px; }
 body { margin: 0; background: #111827; color: #f9fafb; }
-main { box-sizing: border-box; display: flex; flex-direction: column; gap: var(--page-gap); min-height: 100dvh; max-width: 900px; margin: auto; padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left)); }
+main { box-sizing: border-box; display: flex; flex-direction: column; gap: var(--page-gap); height: 100dvh; max-width: 900px; margin: auto; padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left)); }
 .status-bar { display: flex; align-items: center; justify-content: space-between; min-height: 32px; gap: 12px; }
 .status-summary { display: flex; align-items: center; min-width: 0; gap: 6px; }
 #status { margin: 0; overflow: hidden; color: #d1d5db; font-size: .85rem; text-overflow: ellipsis; white-space: nowrap; }
@@ -26,7 +26,7 @@ button { border: 0; border-radius: 12px; color: white; background: #2563eb; font
 #back { width: 100%; background: #4b5563; }
 .page-controls { display: flex; flex: 0 0 auto; gap: 12px; }
 .page-controls button { flex: 1; min-height: 68px; padding: 16px 12px; font-size: clamp(1.1rem, 4vw, 1.4rem); }
-.secondary-area { flex: 0 0 auto; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+.secondary-area { flex: 0 0 auto; overflow-y: auto; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
 .warning { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; padding: 12px; color: #111827; background: #fbbf24; border-radius: 8px; }
 .warning button { padding: 8px 12px; color: #111827; background: #fff; }
 .warning p { margin: 8px 0; }
