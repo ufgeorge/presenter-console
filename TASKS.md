@@ -2,9 +2,12 @@
 
 ## TODO
 
+
 ## IN PROGRESS
 
+
 ## DONE
+- [x] Issue #7：發布 Office 15.0.0.0 Office.dll、加入輸出驗證並完成啟動驗證
 - [x] Issue #5：改資料夾發布、加入 fallback 診斷 log 並完成驗證
 - [x] Issue #3：建立 self-contained Windows 發布腳本並完成 exe 啟動驗證
 - [x] Fix solution/project/test build blockers

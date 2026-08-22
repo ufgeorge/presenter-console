@@ -9,6 +9,9 @@
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <Reference Include="office" Private="true">
+      <HintPath>$(NuGetPackageRoot)microsoft.office.core\12.0.0\Office.dll</HintPath>
+    </Reference>
     <PackageReference Include="Microsoft.Office.Core" Version="12.0.0" />
     <ProjectReference Include="..\PresenterConsole.Contracts\PresenterConsole.Contracts.csproj" />
     <ProjectReference Include="..\PresenterConsole.Sync\PresenterConsole.Sync.csproj" />
