@@ -40,6 +40,19 @@ button {
   padding: 16px;
 }
 
+.presentation-controls {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+.presentation-controls button {
+  flex: 1;
+  background: #059669;
+}
+.presentation-controls button:last-child {
+  background: #047857;
+}
+
 #back {
   width: 100%;
   margin-top: 16px;

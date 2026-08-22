@@ -7,7 +7,9 @@ public enum CommandType
     GotoSlide,
     SyncRequest,
     ActivatePowerPoint,
-    Ping
+    Ping,
+    StartPresentation,
+    StartPresentationFromCurrent
 }
 
 public enum MessageType

@@ -12,4 +12,5 @@ public interface IPresentationAdapter : IDisposable
     void Previous();
     void GotoSlide(int slide);
     void ActivateWindow();
+    void StartPresentation(bool fromCurrentSlide);
 }
