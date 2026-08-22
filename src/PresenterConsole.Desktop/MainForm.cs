@@ -24,12 +24,13 @@ public sealed class MainForm : Form
         SizeMode = PictureBoxSizeMode.Zoom
     };
 
-    private readonly IPresentationAdapter presentation = CreatePresentationAdapter();
+    private readonly IPresentationAdapter presentation;
     private readonly SyncEngine sync = new();
     private AgentServer? server;
 
     public MainForm()
     {
+        presentation = CreatePresentationAdapter();
         Text = "Presenter Console Agent";
         Width = 500;
         Height = 500;
@@ -83,7 +84,7 @@ public sealed class MainForm : Form
     {
         try
         {
-            return new PowerPointAdapter();
+            return new PowerPointAdapter(SynchronizationContext.Current);
         }
         catch (FileNotFoundException exception)
         {
