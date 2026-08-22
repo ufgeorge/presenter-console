@@ -8,6 +8,12 @@ public sealed class UnavailablePresentationAdapter : IPresentationAdapter
         remove { }
     }
 
+    event EventHandler<string>? IPresentationAdapter.ErrorOccurred
+    {
+        add { }
+        remove { }
+    }
+
     public int CurrentShowPosition => 0;
     public int SlideCount => 0;
     public string CurrentNotes => string.Empty;

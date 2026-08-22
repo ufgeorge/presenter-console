@@ -34,6 +34,7 @@ public sealed class AgentServer : IAsyncDisposable
         uiContext = SynchronizationContext.Current ?? new SynchronizationContext();
         sync.CommandAccepted += OnCommandAccepted;
         presentation.StateChanged += (_, _) => BroadcastState();
+        presentation.ErrorOccurred += (_, error) => BroadcastError(error);
     }
 
     public string PairingUrl => $"http://{GetLanAddress()}:5217/?token={pairingToken}";
@@ -169,6 +170,20 @@ public sealed class AgentServer : IAsyncDisposable
         }
     }
 
+    private void BroadcastError(string error)
+    {
+        WebSocket[] clients;
+        lock (sockets)
+        {
+            clients = sockets.ToArray();
+        }
+
+        var message = new WireMessage(MessageType.Error, Error: error);
+        foreach (var client in clients)
+        {
+            _ = SendSafelyAsync(client, message);
+        }
+    }
     private bool IsValidPairingToken(string token)
     {
         if (token.Length != pairingToken.Length)

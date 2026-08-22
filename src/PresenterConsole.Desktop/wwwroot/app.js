@@ -97,7 +97,7 @@ function connect() {
       }
       renderState(message.state);
     } else if (message.type === MessageType.Error) {
-      status.textContent = message.error || '命令未執行，請重試';
+      status.textContent = `操作失敗：${message.error || '命令未執行，請重試'}`;
     }
   };
 
