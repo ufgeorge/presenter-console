@@ -124,7 +124,14 @@ public sealed class AgentServer : IAsyncDisposable
                 }
                 else
                 {
-                    sync.TryAccept(command);
+                    if (!sync.TryAccept(command))
+                    {
+                        await SendSafelyAsync(
+                            socket,
+                            new WireMessage(
+                                MessageType.Error,
+                                Error: "命令被拒絕（sequence 過舊或命令重複），請重整頁面後重試"));
+                    }
                 }
             }
         }

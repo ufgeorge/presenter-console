@@ -1,5 +1,6 @@
 const MessageType = {
   State: 2,
+  Error: 5,
   Pong: 6
 };
 
@@ -89,7 +90,12 @@ function connect() {
   socket.onmessage = event => {
     const message = JSON.parse(event.data);
     if (message.type === MessageType.State || message.type === MessageType.Pong) {
+      if (message.state) {
+        sequence = Math.max(sequence, message.state.sequence);
+      }
       renderState(message.state);
+    } else if (message.type === MessageType.Error) {
+      status.textContent = message.error || '命令未執行，請重試';
     }
   };
 
