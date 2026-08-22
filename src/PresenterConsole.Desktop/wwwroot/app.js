@@ -184,9 +184,9 @@ function setupNotesPreferences() {
 }
 
 function setWakeLockWarning(visible, fallbackPending = false) {
-  wakeWarning.hidden = !visible;
   wakeWarningToggle.hidden = !visible;
   if (!visible) {
+    wakeWarning.hidden = true;
     wakeWarningToggle.setAttribute("aria-expanded", "false");
   }
   wakeFallbackPending = fallbackPending;
