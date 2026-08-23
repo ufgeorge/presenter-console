@@ -102,15 +102,10 @@ public sealed class MainForm : Form
 
     private void SelectCurrentAdapter()
     {
-        var saved = string.Equals(
-            openDesignSettings.LastAdapter,
-            "OpenDesign",
-            StringComparison.OrdinalIgnoreCase)
+        var current = presentation is OpenDesignAdapter
             ? "OpenDesign"
             : "PowerPoint（COM 可用）";
-        adapterChoice.SelectedItem = adapterChoice.Items.Contains(saved)
-            ? saved
-            : adapterChoice.Items[0];
+        adapterChoice.SelectedItem = current;
     }
 
     private void OnApplyAdapter(object? sender, EventArgs e)
