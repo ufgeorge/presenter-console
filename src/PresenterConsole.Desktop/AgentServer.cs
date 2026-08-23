@@ -88,6 +88,12 @@ public sealed class AgentServer : IAsyncDisposable
                 case CommandType.StartPresentationFromCurrent:
                     presentation.StartPresentation(fromCurrentSlide: true);
                     break;
+                case CommandType.SelectPresentation when command.PresentationId is { } presentationId:
+                    if (!presentation.SelectPresentation(presentationId))
+                    {
+                        BroadcastError("找不到選定的簡報，請重新整理清單");
+                    }
+                    break;
             }
         }, null);
     }
@@ -96,17 +102,21 @@ public sealed class AgentServer : IAsyncDisposable
     {
         adapter.StateChanged += OnPresentationStateChanged;
         adapter.ErrorOccurred += OnPresentationError;
+        adapter.PresentationsChanged += OnPresentationsChanged;
     }
 
     private void UnsubscribeFromPresentation(IPresentationAdapter adapter)
     {
         adapter.StateChanged -= OnPresentationStateChanged;
         adapter.ErrorOccurred -= OnPresentationError;
+        adapter.PresentationsChanged -= OnPresentationsChanged;
     }
 
     private void OnPresentationStateChanged(object? sender, EventArgs e) => BroadcastState();
 
     private void OnPresentationError(object? sender, string error) => BroadcastError(error);
+
+    private void OnPresentationsChanged(object? sender, EventArgs e) => BroadcastState();
 
     private async Task HandleWebSocketAsync(HttpContext context)
     {
@@ -190,7 +200,9 @@ public sealed class AgentServer : IAsyncDisposable
         presentation.SlideCount,
         presentation.CurrentNotes,
         true,
-        sync.LastSequence);
+        sync.LastSequence,
+        presentation.Presentations,
+        presentation.SelectedPresentationId);
 
     private void BroadcastState()
     {

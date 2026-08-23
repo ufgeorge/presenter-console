@@ -6,9 +6,10 @@ const CommandType = {
   ActivatePowerPoint: 4,
   Ping: 5,
   StartPresentation: 6,
-  StartPresentationFromCurrent: 7
+  StartPresentationFromCurrent: 7,
+  SelectPresentation: 8
 };
-const APP_VERSION = "v9";
+const APP_VERSION = "v10";
 
 const LANGUAGES = {
   "zh-TW": {
@@ -33,6 +34,8 @@ const LANGUAGES = {
     start: "▶ 開始簡報",
     startCurrent: "從目前頁開始",
     back: "↩ 回簡報",
+    presentationLabel: "選擇要控制的簡報",
+    noPresentations: "目前沒有開啟的簡報",
     prev: "◀ PREV",
     next: "NEXT ▶",
     fontDecrease: "A−",
@@ -68,6 +71,8 @@ const LANGUAGES = {
     start: "▶ 开始演示",
     startCurrent: "从当前页开始",
     back: "↩ 返回演示",
+    presentationLabel: "选择要控制的演示",
+    noPresentations: "目前没有打开的演示",
     prev: "◀ PREV",
     next: "NEXT ▶",
     fontDecrease: "A−",
@@ -103,6 +108,8 @@ const LANGUAGES = {
     start: "▶ Start presentation",
     startCurrent: "Start from current slide",
     back: "↩ Return to presentation",
+    presentationLabel: "Choose presentation to control",
+    noPresentations: "No presentations are open",
     prev: "◀ PREV",
     next: "NEXT ▶",
     fontDecrease: "A−",
@@ -135,6 +142,7 @@ const notes = document.querySelector("#notes");
 const wakeWarning = document.querySelector("#wake-warning");
 const wakeWarningToggle = document.querySelector("#wake-warning-toggle");
 const wakeRetry = document.querySelector("#wake-retry");
+const presentationList = document.querySelector("#presentation-list");
 let socket;
 let sequence = 0;
 let heartbeatTimer;
@@ -255,6 +263,29 @@ function renderState(state) {
 
   slide.textContent = text.slide(state.currentShowPosition, state.slideCount);
   notes.textContent = state.notes || text.noNotes;
+  renderPresentations(state);
+}
+
+function renderPresentations(state) {
+  presentationList.replaceChildren();
+  const presentations = state.presentations || [];
+  if (!presentations.length) {
+    const empty = document.createElement("p");
+    empty.textContent = text.noPresentations;
+    presentationList.append(empty);
+    return;
+  }
+
+  for (const item of presentations) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "presentation-option";
+    button.textContent = item.name || item.fullName;
+    button.title = item.fullName;
+    button.setAttribute("aria-pressed", String(item.id === state.selectedPresentationId));
+    button.onclick = () => sendCommand(CommandType.SelectPresentation, null, item.id);
+    presentationList.append(button);
+  }
 }
 
 function createCommandId() {
@@ -272,7 +303,7 @@ function createCommandId() {
     .join("");
 }
 
-function sendCommand(type, slideNumber = null) {
+function sendCommand(type, slideNumber = null, presentationId = null) {
   try {
     if (socket?.readyState !== WebSocket.OPEN) {
       status.textContent = text.sendFailed;
@@ -285,7 +316,8 @@ function sendCommand(type, slideNumber = null) {
         commandId: createCommandId(),
         sequence: ++sequence,
         type,
-        slide: slideNumber
+        slide: slideNumber,
+        presentationId
       }
     }));
     return true;
@@ -356,5 +388,5 @@ document.addEventListener("visibilitychange", () => {
 
 applyLanguage();
 setupNotesPreferences();
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=9");
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=10");
 connect();

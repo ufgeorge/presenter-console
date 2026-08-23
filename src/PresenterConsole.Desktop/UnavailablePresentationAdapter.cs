@@ -1,3 +1,5 @@
+using PresenterConsole.Contracts;
+
 namespace PresenterConsole.Desktop;
 
 public sealed class UnavailablePresentationAdapter : IPresentationAdapter
@@ -14,9 +16,17 @@ public sealed class UnavailablePresentationAdapter : IPresentationAdapter
         remove { }
     }
 
+    event EventHandler? IPresentationAdapter.PresentationsChanged
+    {
+        add { }
+        remove { }
+    }
+
     public int CurrentShowPosition => 0;
     public int SlideCount => 0;
     public string CurrentNotes => string.Empty;
+    public IReadOnlyList<PresentationInfo> Presentations => [];
+    public string? SelectedPresentationId => null;
 
     public void Next()
     {
@@ -37,6 +47,8 @@ public sealed class UnavailablePresentationAdapter : IPresentationAdapter
     public void StartPresentation(bool fromCurrentSlide)
     {
     }
+
+    public bool SelectPresentation(string presentationId) => false;
 
     public void Dispose()
     {

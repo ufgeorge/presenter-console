@@ -9,7 +9,8 @@ public enum CommandType
     ActivatePowerPoint,
     Ping,
     StartPresentation,
-    StartPresentationFromCurrent
+    StartPresentationFromCurrent,
+    SelectPresentation
 }
 
 public enum MessageType
@@ -27,14 +28,19 @@ public sealed record AgentCommand(
     string CommandId,
     long Sequence,
     CommandType Type,
-    int? Slide = null);
+    int? Slide = null,
+    string? PresentationId = null);
+
+public sealed record PresentationInfo(string Id, string Name, string FullName);
 
 public sealed record PresentationState(
     int CurrentShowPosition,
     int SlideCount,
     string Notes,
     bool Connected,
-    long Sequence);
+    long Sequence,
+    IReadOnlyList<PresentationInfo>? Presentations = null,
+    string? SelectedPresentationId = null);
 
 public sealed record WireMessage(
     MessageType Type,

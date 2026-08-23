@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Windows.Forms;
 using System.Runtime.InteropServices;
+using PresenterConsole.Contracts;
 
 namespace PresenterConsole.Desktop;
 
@@ -19,10 +20,23 @@ public sealed class OpenDesignAdapter : IPresentationAdapter
 
     public event EventHandler? StateChanged;
     public event EventHandler<string>? ErrorOccurred;
+    event EventHandler? IPresentationAdapter.PresentationsChanged
+    {
+        add { }
+        remove { }
+    }
 
     public int CurrentShowPosition => currentPosition;
     public int SlideCount => project.PageCount;
     public string CurrentNotes => currentNotes;
+    public IReadOnlyList<PresentationInfo> Presentations =>
+    [
+        new PresentationInfo(
+            project.ArtifactPath,
+            project.DisplayName,
+            project.HtmlPath)
+    ];
+    public string? SelectedPresentationId => project.ArtifactPath;
 
     public OpenDesignAdapter(OpenDesignProject project)
     {
@@ -36,6 +50,9 @@ public sealed class OpenDesignAdapter : IPresentationAdapter
             TimeSpan.FromSeconds(1.5),
             TimeSpan.FromSeconds(1.5));
     }
+
+    public bool SelectPresentation(string presentationId) =>
+        string.Equals(presentationId, project.ArtifactPath, StringComparison.OrdinalIgnoreCase);
 
     public void Next() => SendNavigationKey("{RIGHT}", 1);
 
