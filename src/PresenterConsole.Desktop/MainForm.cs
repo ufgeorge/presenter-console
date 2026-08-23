@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Reflection;
 using QRCoder;
 using PresenterConsole.Sync;
 
@@ -52,7 +53,8 @@ public sealed class MainForm : Form
     public MainForm()
     {
         presentation = CreateInitialAdapter(out openDesignSettings);
-        Text = "Presenter Console Agent";
+        var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "unknown";
+        Text = $"Presenter Console Agent v{version}";
         Width = 500;
         Height = 560;
 
