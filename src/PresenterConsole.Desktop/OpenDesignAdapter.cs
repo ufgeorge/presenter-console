@@ -18,6 +18,7 @@ public sealed class OpenDesignAdapter : IPresentationAdapter
     private int currentPosition;
     private string currentNotes = string.Empty;
     private IntPtr targetWindowHandle;
+    private bool logNextRefresh;
 
     public event EventHandler? StateChanged;
     public event EventHandler<string>? ErrorOccurred;
@@ -59,11 +60,17 @@ public sealed class OpenDesignAdapter : IPresentationAdapter
 
     public bool SelectPresentation(string presentationId)
     {
+        LogDiagnostic(
+            $"SelectPresentation received id={TruncateForLog(presentationId)}");
         var selectedProject = projects.FirstOrDefault(candidate =>
             string.Equals(
                 candidate.ArtifactPath,
                 presentationId,
                 StringComparison.OrdinalIgnoreCase));
+        LogDiagnostic(selectedProject is null
+            ? $"SelectPresentation match=not-found id={TruncateForLog(presentationId)}"
+            : $"SelectPresentation match=found ArtifactPath="
+                + TruncateForLog(selectedProject.ArtifactPath));
         if (selectedProject is null
             || string.Equals(
                 selectedProject.ArtifactPath,
@@ -78,7 +85,14 @@ public sealed class OpenDesignAdapter : IPresentationAdapter
         expectedPosition = 1;
         currentPosition = 0;
         currentNotes = string.Empty;
+        logNextRefresh = true;
         RefreshActualState(raiseEvent: false);
+        LogDiagnostic(
+            $"SelectPresentation switched SpeakerPrivatePath="
+                + TruncateForLog(project.SpeakerPrivatePath)
+                + $" PageCount={project.PageCount} expectedPosition={expectedPosition}"
+                + $" notesLength={currentNotes.Length}"
+                + $" notesPreview={TruncateForLog(currentNotes, 60)}");
         StateChanged?.Invoke(this, EventArgs.Empty);
         return true;
     }
@@ -195,6 +209,14 @@ public sealed class OpenDesignAdapter : IPresentationAdapter
         var nextPosition = actualPosition ?? expectedPosition;
         var nextNotes = ReadNotesForPosition(nextPosition);
         var changed = nextPosition != currentPosition || nextNotes != currentNotes;
+        if (logNextRefresh || nextNotes != currentNotes)
+        {
+            LogDiagnostic(
+                $"RefreshActualState nextPosition={nextPosition}"
+                    + $" notesLength={nextNotes.Length}"
+                    + $" notesPreview={TruncateForLog(nextNotes, 60)}");
+            logNextRefresh = false;
+        }
         currentPosition = nextPosition;
         currentNotes = nextNotes;
         if (raiseEvent && changed)
@@ -368,5 +390,26 @@ public sealed class OpenDesignAdapter : IPresentationAdapter
     private void ReportError(string message)
     {
         ErrorOccurred?.Invoke(this, message);
+    }
+
+    private static string TruncateForLog(string value, int maxLength = 120)
+    {
+        var normalized = value.Replace('\r', ' ').Replace('\n', ' ');
+        return normalized.Length <= maxLength
+            ? normalized
+            : normalized[..maxLength] + "...";
+    }
+
+    private static void LogDiagnostic(string message)
+    {
+        try
+        {
+            var logPath = Path.Combine(AppContext.BaseDirectory, "presenter-console.log");
+            var logEntry = $"[{DateTime.Now:O}] OpenDesign adapter diagnostic: {message}"
+                + Environment.NewLine;
+            File.AppendAllText(logPath, logEntry);
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
     }
 }
