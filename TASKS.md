@@ -148,3 +148,10 @@
 - [DONE] 同步以 JSON notes array 長度計算 PageCount
 - [DONE] 新增 JSON、缺少 script、損壞 JSON 的 parser 回歸測試
 - [DONE] 執行 build、test、diff 與行長檢查
+
+## Issue #96 工作追蹤
+- [DONE] 讀取規範與 issue #96，建立 `codex/issue-96-collapse-panels`
+- [DONE] 將簡報選擇與觀眾提問面板改為 status bar icon 獨立收合
+- [DONE] 同步三語 aria、PWA v17 資源 query 與 Service Worker cache
+- [DONE] 完成三 viewport 版面與互動驗證、node check、build、test
+- [TODO] 開 PR、讀取 review comments，完成後切回 `main`
