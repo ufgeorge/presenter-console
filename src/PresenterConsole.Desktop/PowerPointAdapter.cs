@@ -92,6 +92,13 @@ public sealed class PowerPointAdapter : IPresentationAdapter
     private static extern bool SetForegroundWindow(IntPtr windowHandle);
 
     [DllImport("user32.dll")]
+    private static extern bool PostMessage(
+        IntPtr windowHandle,
+        uint message,
+        IntPtr wParam,
+        IntPtr lParam);
+
+    [DllImport("user32.dll")]
     private static extern void keybd_event(
         byte virtualKey,
         byte scanCode,
@@ -110,6 +117,9 @@ public sealed class PowerPointAdapter : IPresentationAdapter
     private const int SwRestore = 9;
     private const int RestoreDelayMilliseconds = 100;
     private const int ShiftVirtualKey = 0x10;
+    private const int F5VirtualKey = 0x74;
+    private const uint WmKeyDown = 0x0100;
+    private const uint WmKeyUp = 0x0101;
     private const uint KeyEventKeyUp = 0x0002;
     private const int ShiftActivationDelayMilliseconds = 50;
 
@@ -332,7 +342,7 @@ public sealed class PowerPointAdapter : IPresentationAdapter
     {
         try
         {
-            ActivateSelectedPresentationWindow(out _);
+            ActivateSelectedPresentationWindow(out _, bringToForeground: true);
             if (TryGetSlideShowWindow() is { } window)
             {
                 // SlideShowWindow is owned by PowerPoint's running show. Do not
@@ -357,44 +367,40 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             return;
         }
 
-        var key = fromCurrentSlide ? "+{F5}" : "{F5}";
-        LogDiagnostic($"StartPresentation path=SendKeys key={key}");
-        var foregroundVerificationFailed = false;
+        LogDiagnostic(
+            $"StartPresentation path=PostMessage fromCurrent={fromCurrentSlide}");
 
         for (var attempt = 1; attempt <= 3; attempt++)
         {
             try
             {
-                var activationResult = ActivateSelectedPresentationWindow(out var targetWindowHandle);
+                var activationResult = ActivateSelectedPresentationWindow(
+                    out var targetWindowHandle,
+                    bringToForeground: false);
                 if (activationResult == WindowActivationResult.NotFound)
                 {
                     ErrorOccurred?.Invoke(this, "找不到選定簡報的文件視窗，請先開啟該簡報");
                     return;
                 }
 
-                if (activationResult == WindowActivationResult.ForegroundDenied)
+                if (targetWindowHandle == IntPtr.Zero)
                 {
-                    foregroundVerificationFailed = true;
                     LogDiagnostic(
-                        $"StartPresentation attempt={attempt} foreground activation failed");
+                        $"StartPresentation attempt={attempt} document HWND missing");
                     continue;
                 }
 
                 LogDiagnostic(
-                    $"StartPresentation attempt={attempt} Activate succeeded; "
-                    + "waiting for focus");
-                Thread.Sleep(300);
-
-                if (GetForegroundWindow() != targetWindowHandle)
+                    $"StartPresentation attempt={attempt} document HWND="
+                    + targetWindowHandle);
+                if (!PostStartPresentationKey(targetWindowHandle, fromCurrentSlide))
                 {
-                    foregroundVerificationFailed = true;
                     LogDiagnostic(
-                        $"StartPresentation attempt={attempt} foreground verification failed");
+                        $"StartPresentation attempt={attempt} PostMessage failed");
                     continue;
                 }
 
-                SendKeys.SendWait(key);
-                LogDiagnostic($"StartPresentation attempt={attempt} F5 sent");
+                LogDiagnostic($"StartPresentation attempt={attempt} F5 posted");
                 Thread.Sleep(400);
 
                 if (IsSlideShowWindowAlive())
@@ -421,20 +427,29 @@ public sealed class PowerPointAdapter : IPresentationAdapter
                 ReportComFailure("StartPresentation", exception);
                 return;
             }
-            catch (InvalidOperationException exception)
-            {
-                LogDiagnostic(
-                    $"StartPresentation attempt={attempt} SendKeys 失敗："
-                    + exception.Message);
-            }
         }
 
-        LogDiagnostic("StartPresentation SendKeys 重試耗盡；不使用 COM 放映 fallback");
+        LogDiagnostic("StartPresentation PostMessage 重試耗盡；不使用 COM 放映 fallback");
         ErrorOccurred?.Invoke(
             this,
-            foregroundVerificationFailed
-                ? "無法將 PowerPoint 帶到前景，請手動點一下 PowerPoint 視窗再試"
-                : "開始簡報失敗，請手動在電腦按 F5");
+            "開始簡報失敗，請手動在電腦按 F5");
+    }
+
+    private static bool PostStartPresentationKey(IntPtr windowHandle, bool fromCurrentSlide)
+    {
+        var shiftDown = !fromCurrentSlide
+            || PostMessage(windowHandle, WmKeyDown, (IntPtr)ShiftVirtualKey, IntPtr.Zero);
+        if (!shiftDown)
+        {
+            return false;
+        }
+
+        var f5Down = PostMessage(windowHandle, WmKeyDown, (IntPtr)F5VirtualKey, IntPtr.Zero);
+        var f5Up = f5Down
+            && PostMessage(windowHandle, WmKeyUp, (IntPtr)F5VirtualKey, IntPtr.Zero);
+        var shiftUp = !fromCurrentSlide
+            || PostMessage(windowHandle, WmKeyUp, (IntPtr)ShiftVirtualKey, IntPtr.Zero);
+        return f5Up && shiftUp;
     }
     private bool IsSlideShowWindowAlive()
     {
@@ -444,12 +459,12 @@ public sealed class PowerPointAdapter : IPresentationAdapter
     private enum WindowActivationResult
     {
         Success,
-        NotFound,
-        ForegroundDenied
+        NotFound
     }
 
     private WindowActivationResult ActivateSelectedPresentationWindow(
-        out IntPtr targetWindowHandle)
+        out IntPtr targetWindowHandle,
+        bool bringToForeground)
     {
         targetWindowHandle = IntPtr.Zero;
         if (presentation is null)
@@ -463,7 +478,10 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             return WindowActivationResult.NotFound;
         }
 
-        application.Activate();
+        if (bringToForeground)
+        {
+            application.Activate();
+        }
         foreach (PowerPoint.DocumentWindow window in application.Windows)
         {
             try
@@ -472,10 +490,15 @@ public sealed class PowerPointAdapter : IPresentationAdapter
                 if (string.Equals(GetPresentationId(windowPresentation), selectedId, StringComparison.OrdinalIgnoreCase))
                 {
                     targetWindowHandle = new IntPtr(window.HWND);
+                    if (!bringToForeground)
+                    {
+                        return WindowActivationResult.Success;
+                    }
+
                     window.Activate();
                     return BringWindowToForeground(targetWindowHandle)
                         ? WindowActivationResult.Success
-                        : WindowActivationResult.ForegroundDenied;
+                        : WindowActivationResult.NotFound;
                 }
             }
             catch (COMException exception)
