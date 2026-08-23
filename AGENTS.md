@@ -61,3 +61,10 @@
 - 前端改動：`node --check <file>.js`
 - 所有 PR：本地跑完整驗證後在 PR description 記錄結果
 - 不要為了讓測試過而改測試
+
+### .NET build/test 執行規範（George 2026-08-23 明令，違反 = 打回）
+
+1. 執行 .NET build/test **必須依序執行**（同一時間只跑一個，不並行），指令一律帶：`-m:1 -p:UseSharedCompilation=false`
+2. **完成、失敗或中斷後**必須執行 `dotnet build-server shutdown` 清理 build server
+3. 逾時（timeout）時清理**完整 process tree**（不只主 process），並**確認無殘留程序**（如 VBCSCompiler / MSBuild 子程序）後才算完成
+4. 不得因 build server 殘留而產生「下一次 build 假綠燈」或連線失敗等干擾後續任務的狀態
