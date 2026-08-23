@@ -67,3 +67,9 @@
 - [DONE] 方向鍵最多送出一次，alive 檢查失敗時只重試啟用／尋找視窗
 - [DONE] key 送出後更新 expected 頁碼與 Notes fallback，並在重試耗盡時回報錯誤
 - [DONE] 執行 build、test、lint、建立 PR 並處理 review comments
+
+## Issue #62 工作追蹤
+- [DONE] 讀取 issue #62、專案規範並同步 `main`
+- [DONE] 語音解析改為逐行，隱藏 `[voice]` 文字並保留正常 Notes 換行
+- [DONE] 語音速率調整為 1.5，並更新前端／Service Worker 快取版本至 v12
+- [DONE] 執行解析驗算、lint、build、建立 PR 並處理 review comments

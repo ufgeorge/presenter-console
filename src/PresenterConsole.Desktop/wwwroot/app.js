@@ -9,7 +9,7 @@ const CommandType = {
   StartPresentationFromCurrent: 7,
   SelectPresentation: 8
 };
-const APP_VERSION = "v11";
+const APP_VERSION = "v12";
 
 const LANGUAGES = {
   "zh-TW": {
@@ -264,33 +264,40 @@ async function acquireNoSleepFallback() {
 function parseVoiceSequence(noteText) {
   const sequence = [];
   const commandPattern = /\[(voice|\d+\s*sec)\]/gi;
-  let activeCommand;
-  let cursor = 0;
-  let match;
 
-  while ((match = commandPattern.exec(noteText || "")) !== null) {
+  for (const line of (noteText || "").split("\n")) {
+    let activeCommand;
+    let cursor = 0;
+    let match;
+
+    commandPattern.lastIndex = 0;
+    while ((match = commandPattern.exec(line)) !== null) {
+      if (activeCommand === "voice") {
+        const voiceText = line.slice(cursor, match.index).trim();
+        if (voiceText) sequence.push({ type: "voice", text: voiceText });
+      }
+
+      activeCommand = match[1].toLowerCase() === "voice" ? "voice" : "delay";
+      if (activeCommand === "delay") {
+        sequence.push({ type: "delay", seconds: Number.parseInt(match[1], 10) });
+      }
+      cursor = commandPattern.lastIndex;
+    }
+
     if (activeCommand === "voice") {
-      const voiceText = noteText.slice(cursor, match.index).trim();
+      const voiceText = line.slice(cursor).trim();
       if (voiceText) sequence.push({ type: "voice", text: voiceText });
     }
-
-    activeCommand = match[1].toLowerCase() === "voice" ? "voice" : "delay";
-    if (activeCommand === "delay") {
-      sequence.push({ type: "delay", seconds: Number.parseInt(match[1], 10) });
-    }
-    cursor = commandPattern.lastIndex;
-  }
-
-  if (activeCommand === "voice") {
-    const voiceText = noteText.slice(cursor).trim();
-    if (voiceText) sequence.push({ type: "voice", text: voiceText });
   }
 
   return sequence;
 }
 
 function stripVoiceCommands(noteText) {
-  return (noteText || "").replace(/\[\d+\s*sec\]/gi, "").replace(/\[voice\]/gi, "");
+  return (noteText || "")
+    .split("\n")
+    .map(line => line.replace(/\[voice\][^\[\]\n]*/gi, "").replace(/\[\d+\s*sec\]/gi, "").trim())
+    .join("\n");
 }
 
 function cancelVoiceSequence() {
@@ -315,6 +322,7 @@ function playVoiceSequence(noteText, token) {
 
     const utterance = new SpeechSynthesisUtterance(item.text);
     utterance.lang = "zh-TW";
+    utterance.rate = 1.5;
     utterance.onend = () => {
       if (token === voiceSequenceToken) playNext();
     };
@@ -464,5 +472,5 @@ document.addEventListener("visibilitychange", () => {
 
 applyLanguage();
 setupNotesPreferences();
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=11");
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=12");
 connect();
