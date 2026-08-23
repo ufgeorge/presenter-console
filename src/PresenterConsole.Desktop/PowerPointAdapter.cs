@@ -505,19 +505,25 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         }
         else
         {
-            LogDiagnostic($"BringWindowToForeground step=restore result=not-needed hwnd={windowHandle}");
+            LogDiagnostic(
+                "BringWindowToForeground step=restore result=not-needed "
+                + $"hwnd={windowHandle}");
         }
 
         keybd_event(AltVirtualKey, 0, 0, UIntPtr.Zero);
         keybd_event(AltVirtualKey, 0, KeyEventKeyUp, UIntPtr.Zero);
-        LogDiagnostic($"BringWindowToForeground step=alt-foreground-pierce result=success hwnd={windowHandle}");
+        LogDiagnostic(
+            "BringWindowToForeground step=alt-foreground-pierce result=success "
+            + $"hwnd={windowHandle}");
         Thread.Sleep(AltActivationDelayMilliseconds);
 
         var targetThreadId = GetWindowThreadProcessId(windowHandle, IntPtr.Zero);
         var currentThreadId = GetCurrentThreadId();
         LogDiagnostic(
-            $"BringWindowToForeground step=get-window-thread result={(targetThreadId == 0 ? "failed" : "success")} "
-            + $"hwnd={windowHandle} targetThreadId={targetThreadId} currentThreadId={currentThreadId}");
+            "BringWindowToForeground step=get-window-thread "
+            + $"result={(targetThreadId == 0 ? "failed" : "success")} "
+            + $"hwnd={windowHandle} targetThreadId={targetThreadId} "
+            + $"currentThreadId={currentThreadId}");
         if (targetThreadId == 0)
         {
             return false;
@@ -527,7 +533,8 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         var attached = needsAttach
             && AttachThreadInput(currentThreadId, targetThreadId, true);
         LogDiagnostic(
-            $"BringWindowToForeground step=attach-thread-input result={(needsAttach ? (attached ? "success" : "failed") : "not-needed")} "
+            "BringWindowToForeground step=attach-thread-input "
+            + $"result={(needsAttach ? (attached ? "success" : "failed") : "not-needed")} "
             + $"sourceThreadId={currentThreadId} targetThreadId={targetThreadId}");
         try
         {
@@ -535,10 +542,12 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             var actualForeground = GetForegroundWindow();
             var verified = actualForeground == windowHandle;
             LogDiagnostic(
-                $"BringWindowToForeground step=set-foreground result={(setForeground ? "success" : "failed")} "
+                "BringWindowToForeground step=set-foreground "
+                + $"result={(setForeground ? "success" : "failed")} "
                 + $"hwnd={windowHandle}");
             LogDiagnostic(
-                $"BringWindowToForeground step=verify-foreground result={(verified ? "success" : "failed")} "
+                "BringWindowToForeground step=verify-foreground "
+                + $"result={(verified ? "success" : "failed")} "
                 + $"actualHwnd={actualForeground} targetHwnd={windowHandle}");
             return setForeground && verified;
         }
@@ -548,7 +557,8 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             {
                 var detached = AttachThreadInput(currentThreadId, targetThreadId, false);
                 LogDiagnostic(
-                    $"BringWindowToForeground step=detach-thread-input result={(detached ? "success" : "failed")} "
+                    "BringWindowToForeground step=detach-thread-input "
+                    + $"result={(detached ? "success" : "failed")} "
                     + $"sourceThreadId={currentThreadId} targetThreadId={targetThreadId}");
             }
         }
