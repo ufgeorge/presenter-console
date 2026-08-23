@@ -27,8 +27,9 @@ button { border: 0; border-radius: 12px; color: white; background: #2563eb; font
 .page-controls { display: flex; flex: 0 0 auto; gap: 12px; }
 .page-controls button { flex: 1; min-height: 68px; padding: 16px 12px; font-size: clamp(1.1rem, 4vw, 1.4rem); }
 .secondary-area { flex: 0 0 auto; overflow-y: auto; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
-.warning { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; padding: 12px; color: #111827; background: #fbbf24; border-radius: 8px; }
+.warning { position: fixed; right: max(12px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom)); left: max(12px, env(safe-area-inset-left)); z-index: 10; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; max-width: 876px; margin: auto; padding: 12px; color: #111827; background: #fbbf24; border-radius: 8px; box-shadow: 0 8px 24px #0008; opacity: 0; transform: translateY(12px); transition: opacity .18s ease, transform .18s ease; visibility: hidden; }
 .warning[hidden] { display: none; }
+.warning.is-visible { opacity: 1; transform: translateY(0); visibility: visible; }
 .warning button { padding: 8px 12px; color: #111827; background: #fff; }
 .warning p { margin: 8px 0; }
 .warning ul { margin: 8px 0 0; padding-left: 20px; }

@@ -24,6 +24,7 @@
 - [x] Issue #12：LAN HTTP Wake Lock 的 NoSleep fallback 與自動鎖定指引
 
 ## DONE
+- [x] Issue #38：Wake 警告改為暫時性 toast、修復 icon 閃爍並更新 PWA 快取版本
 - [x] Issue #36：修復 Wake 警告區塊的 CSS display 覆蓋 hidden
 - [x] Issue #32：Wake 警告收合、Speaker Notes 換行正規化與移除頁碼
 - [x] Issue #13：PWA 與 Agent 三語 i18n、命令防呆與手機版本標記
