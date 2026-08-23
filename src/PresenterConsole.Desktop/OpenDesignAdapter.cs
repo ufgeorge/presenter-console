@@ -100,31 +100,7 @@ public sealed class OpenDesignAdapter : IPresentationAdapter
 
     public void StartPresentation(bool fromCurrentSlide)
     {
-        try
-        {
-            var process = Process.Start(new ProcessStartInfo
-            {
-                FileName = project.HtmlPath,
-                UseShellExecute = true
-            });
-            if (process is not null && process.MainWindowHandle != IntPtr.Zero)
-            {
-                targetWindowHandle = process.MainWindowHandle;
-            }
-
-            Thread.Sleep(300);
-            SendKeys.SendWait("{F11}");
-            Thread.Sleep(400);
-            RefreshActualState(raiseEvent: true);
-        }
-        catch (InvalidOperationException exception)
-        {
-            ReportError($"開啟 OpenDesign deck 失敗：{exception.Message}");
-        }
-        catch (System.ComponentModel.Win32Exception exception)
-        {
-            ReportError($"開啟 OpenDesign deck 失敗：{exception.Message}");
-        }
+        ReportError("請先在 Open Design 手動開始播放（全螢幕）");
     }
 
     public void Dispose()

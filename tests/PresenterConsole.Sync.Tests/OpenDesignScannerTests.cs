@@ -15,7 +15,7 @@ public sealed class OpenDesignScannerTests
         var projects = new OpenDesignProjectScanner().Scan(FixtureDirectory);
 
         var project = Assert.Single(projects);
-        Assert.Equal("Sample Deck", project.DisplayName);
+        Assert.Equal("sample-deck", project.DisplayName);
         Assert.Equal(2, project.PageCount);
         Assert.True(File.Exists(project.HtmlPath));
         Assert.True(File.Exists(project.SpeakerPrivatePath));

@@ -1,6 +1,6 @@
 {
   "kind": "deck",
-  "displayName": "Sample Deck",
+  "title": "sample-deck.html",
   "htmlPath": "sample-deck.html",
   "speakerPrivatePath": "sample-deck-speaker-private.html",
   "previewPath": "sample-deck-preview.png"
