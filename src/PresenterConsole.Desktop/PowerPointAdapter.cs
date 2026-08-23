@@ -109,9 +109,9 @@ public sealed class PowerPointAdapter : IPresentationAdapter
 
     private const int SwRestore = 9;
     private const int RestoreDelayMilliseconds = 100;
-    private const int AltVirtualKey = 0x12;
+    private const int ShiftVirtualKey = 0x10;
     private const uint KeyEventKeyUp = 0x0002;
-    private const int AltActivationDelayMilliseconds = 50;
+    private const int ShiftActivationDelayMilliseconds = 50;
 
     private void SubscribeToApplication(PowerPoint.Application target)
     {
@@ -510,12 +510,12 @@ public sealed class PowerPointAdapter : IPresentationAdapter
                 + $"hwnd={windowHandle}");
         }
 
-        keybd_event(AltVirtualKey, 0, 0, UIntPtr.Zero);
-        keybd_event(AltVirtualKey, 0, KeyEventKeyUp, UIntPtr.Zero);
+        keybd_event(ShiftVirtualKey, 0, 0, UIntPtr.Zero);
+        keybd_event(ShiftVirtualKey, 0, KeyEventKeyUp, UIntPtr.Zero);
         LogDiagnostic(
-            "BringWindowToForeground step=alt-foreground-pierce result=success "
+            "BringWindowToForeground step=shift-foreground-pierce result=success "
             + $"hwnd={windowHandle}");
-        Thread.Sleep(AltActivationDelayMilliseconds);
+        Thread.Sleep(ShiftActivationDelayMilliseconds);
 
         var targetThreadId = GetWindowThreadProcessId(windowHandle, IntPtr.Zero);
         var currentThreadId = GetCurrentThreadId();
