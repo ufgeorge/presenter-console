@@ -121,4 +121,4 @@
 - [DONE] 讀取 issue #85、專案規範並同步 `main`
 - [DONE] OpenDesign SelectPresentation 與 RefreshActualState 加入診斷 log
 - [DONE] 執行 build、test、`git diff --check` 與行長檢查
-- [IN PROGRESS] 建立 PR 並處理 review comments
+- [DONE] 建立 PR 並處理 review comments（目前無留言）
