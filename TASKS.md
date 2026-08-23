@@ -53,3 +53,10 @@
 - [DONE] 執行 build、test、行長檢查並修正問題
 - [DONE] 建立 PR、讀取 review comments（目前無留言）
 - [BLOCKED] 實機 PowerPoint/手機與跨軟體切換驗收需 George 的 Windows Office 環境
+
+## Issue #56 工作追蹤
+- [DONE] 讀取 issue #56、`AGENTS.md`、`PROJECT_CONTEXT.md`、`docs/mvp-spec.md` 並同步 `main`
+- [DONE] OpenDesign 啟動改為提示使用者手動開始全螢幕播放，不開外部瀏覽器、不送 F11
+- [DONE] scanner 排除 `-public`、`-speaker-private`、`-private` companion artifact
+- [DONE] 清理 artifact `title` 的 `.html` 後綴並補回歸測試
+- [DONE] 執行 build、test、lint、建立 PR 並處理 review comments

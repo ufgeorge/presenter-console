@@ -55,6 +55,11 @@ public sealed class OpenDesignProjectScanner
                 "*.html.artifact.json",
                 SearchOption.AllDirectories))
             {
+                if (IsCompanionArtifact(artifactPath))
+                {
+                    continue;
+                }
+
                 var project = TryReadProject(artifactPath);
                 if (project is not null)
                 {
@@ -113,8 +118,9 @@ public sealed class OpenDesignProjectScanner
             var pageCount = speakerPrivatePath is not null
                 ? OpenDesignHtmlParser.CountSlides(speakerPrivatePath)
                 : OpenDesignHtmlParser.CountSlides(htmlPath);
-            var displayName = GetFirstString(root, DisplayNameKeys)
-                ?? Path.GetFileNameWithoutExtension(htmlPath);
+            var displayName = CleanDisplayName(
+                GetFirstString(root, DisplayNameKeys)
+                ?? Path.GetFileNameWithoutExtension(htmlPath));
 
             return new OpenDesignProject(
                 displayName,
@@ -142,6 +148,27 @@ public sealed class OpenDesignProjectScanner
     {
         var path = artifactPath[..^".artifact.json".Length];
         return File.Exists(path) ? path : null;
+    }
+
+    private static bool IsCompanionArtifact(string artifactPath)
+    {
+        const string artifactSuffix = ".artifact.json";
+        var artifactName = Path.GetFileName(artifactPath);
+        if (!artifactName.EndsWith(artifactSuffix, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var htmlName = artifactName[..^artifactSuffix.Length];
+        var stem = Path.GetFileNameWithoutExtension(htmlName);
+        return stem.EndsWith("-public", StringComparison.OrdinalIgnoreCase)
+            || stem.EndsWith("-speaker-private", StringComparison.OrdinalIgnoreCase)
+            || stem.EndsWith("-private", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string CleanDisplayName(string displayName)
+    {
+        return Path.GetFileNameWithoutExtension(displayName);
     }
 
     private static string? FindCompanion(
