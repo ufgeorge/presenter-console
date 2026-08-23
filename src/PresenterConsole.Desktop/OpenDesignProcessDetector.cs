@@ -8,6 +8,7 @@ public static class OpenDesignProcessDetector
     [
         "OpenDesign",
         "opendesign",
+        "Open Design",
         "OpenDesignApp",
         "open-design",
         "electron"
