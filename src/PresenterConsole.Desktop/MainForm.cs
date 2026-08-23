@@ -118,12 +118,6 @@ public sealed class MainForm : Form
     {
         if (settings.ProjectRoots.Count == 0)
         {
-            MessageBox.Show(
-                "尚未設定 OpenDesign 專案根目錄。請在 exe 同目錄的 "
-                + "opendesign.projects.json 設定 projectRoots。",
-                "Presenter Console",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
             return [];
         }
 
@@ -135,15 +129,6 @@ public sealed class MainForm : Form
             .Where(Directory.Exists)
             .SelectMany(scanner.Scan)
             .ToArray();
-        if (projects.Length == 0)
-        {
-            MessageBox.Show(
-                "找不到 OpenDesign deck（*.html.artifact.json，kind 必須是 deck）。",
-                "Presenter Console",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
-        }
-
         return projects;
     }
 
