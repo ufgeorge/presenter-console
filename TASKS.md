@@ -60,3 +60,10 @@
 - [DONE] scanner 排除 `-public`、`-speaker-private`、`-private` companion artifact
 - [DONE] 清理 artifact `title` 的 `.html` 後綴並補回歸測試
 - [DONE] 執行 build、test、lint、建立 PR 並處理 review comments
+
+## Issue #58 工作追蹤
+- [DONE] 讀取 issue #58、`AGENTS.md`、`PROJECT_CONTEXT.md`、`docs/mvp-spec.md` 並同步 `main`
+- [DONE] OpenDesign 視窗偵測加入 `Open Design` process 名稱
+- [DONE] 方向鍵最多送出一次，alive 檢查失敗時只重試啟用／尋找視窗
+- [DONE] key 送出後更新 expected 頁碼與 Notes fallback，並在重試耗盡時回報錯誤
+- [IN PROGRESS] 執行 build、test、lint、建立 PR 並處理 review comments

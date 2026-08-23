@@ -116,31 +116,48 @@ public sealed class OpenDesignAdapter : IPresentationAdapter
             return;
         }
 
+        try
+        {
+            ActivateWindow();
+            Thread.Sleep(300);
+            SendKeys.SendWait(key);
+        }
+        catch (InvalidOperationException exception)
+        {
+            ReportError($"OpenDesign 換頁失敗：{exception.Message}");
+            return;
+        }
+
+        expectedPosition = Math.Clamp(expectedPosition + delta, 1, SlideCount);
+        RefreshActualState(raiseEvent: true);
+
+        Exception? lastException = null;
         for (var attempt = 1; attempt <= 3; attempt++)
         {
             try
             {
-                ActivateWindow();
-                Thread.Sleep(300);
-                SendKeys.SendWait(key);
-                Thread.Sleep(400);
-                if (!IsTargetWindowAlive())
+                if (attempt > 1)
                 {
-                    continue;
+                    targetWindowHandle = IntPtr.Zero;
+                    ActivateWindow();
                 }
 
-                expectedPosition = Math.Clamp(expectedPosition + delta, 1, SlideCount);
-                RefreshActualState(raiseEvent: true);
-                return;
+                Thread.Sleep(400);
+                if (IsTargetWindowAlive())
+                {
+                    return;
+                }
             }
             catch (InvalidOperationException exception)
             {
-                if (attempt == 3)
-                {
-                    ReportError($"OpenDesign 換頁失敗：{exception.Message}");
-                }
+                lastException = exception;
             }
         }
+
+        var detail = lastException is null
+            ? "找不到可用的 OpenDesign 視窗"
+            : lastException.Message;
+        ReportError($"OpenDesign 換頁失敗：{detail}");
     }
 
     private void RefreshActualState(bool raiseEvent)
@@ -275,7 +292,7 @@ public sealed class OpenDesignAdapter : IPresentationAdapter
 
     private IntPtr FindTargetWindowHandle()
     {
-        foreach (var processName in new[] { "OpenDesign", "electron" })
+        foreach (var processName in new[] { "OpenDesign", "Open Design", "electron" })
         {
             var process = Process.GetProcessesByName(processName)
                 .FirstOrDefault(item => item.MainWindowHandle != IntPtr.Zero);
