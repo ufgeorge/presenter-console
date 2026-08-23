@@ -116,3 +116,9 @@
 - [DONE] 讀取 issue #83、專案規範並同步 `main`
 - [DONE] ALT 前景鎖穿透改為 SHIFT，更新診斷 log
 - [DONE] 執行 build、test、`git diff --check`、建立 PR 並處理 review comments（目前無留言）
+
+## Issue #85 工作追蹤
+- [DONE] 讀取 issue #85、專案規範並同步 `main`
+- [DONE] OpenDesign SelectPresentation 與 RefreshActualState 加入診斷 log
+- [DONE] 執行 build、test、`git diff --check` 與行長檢查
+- [IN PROGRESS] 建立 PR 並處理 review comments
