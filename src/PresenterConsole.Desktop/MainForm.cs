@@ -46,12 +46,11 @@ public sealed class MainForm : Form
     private readonly SyncEngine sync = new();
     private readonly OpenDesignSettings openDesignSettings;
     private IReadOnlyList<OpenDesignProject> openDesignProjects = [];
-    private readonly bool openDesignRunning;
+    private string? startupAdapterFallbackReason;
     private AgentServer? server;
 
     public MainForm()
     {
-        openDesignRunning = OpenDesignProcessDetector.IsRunning();
         presentation = CreateInitialAdapter(out openDesignSettings);
         Text = "Presenter Console Agent";
         Width = 500;
@@ -96,10 +95,7 @@ public sealed class MainForm : Form
     {
         adapterChoice.Items.Clear();
         adapterChoice.Items.Add("PowerPoint（COM 可用）");
-        if (openDesignRunning || openDesignProjects.Count > 0)
-        {
-            adapterChoice.Items.Add("OpenDesign");
-        }
+        adapterChoice.Items.Add("OpenDesign");
 
         configureOpenDesign.Enabled = adapterChoice.Items.Contains("OpenDesign");
     }
@@ -124,10 +120,26 @@ public sealed class MainForm : Form
             return;
         }
 
+        if (choice == "OpenDesign")
+        {
+            if (!OpenDesignProcessDetector.IsRunning())
+            {
+                ReportAdapterSelectionError("請先執行 OpenDesign 再套用");
+                return;
+            }
+
+            openDesignProjects = ScanOpenDesignProjects();
+            if (openDesignProjects.Count == 0)
+            {
+                ReportAdapterSelectionError("請先設定 OpenDesign 資料夾");
+                return;
+            }
+        }
+
         var next = CreateAdapter(choice);
         if (next is null)
         {
-            RefreshState();
+            ReportAdapterSelectionError("請先設定 OpenDesign 資料夾");
             return;
         }
 
@@ -137,6 +149,7 @@ public sealed class MainForm : Form
         SubscribeToPresentation(presentation);
         server?.ReplacePresentation(presentation);
         previous.Dispose();
+        startupAdapterFallbackReason = null;
         openDesignSettings.LastAdapter = choice == "OpenDesign" ? "OpenDesign" : "PowerPoint";
         openDesignSettings.Save();
         RefreshState();
@@ -185,10 +198,9 @@ public sealed class MainForm : Form
 
     private string GetStatusText()
     {
-        if (presentation is UnavailablePresentationAdapter && openDesignRunning
-            && openDesignProjects.Count == 0)
+        if (!string.IsNullOrWhiteSpace(startupAdapterFallbackReason))
         {
-            return "已偵測到 OpenDesign，但尚未設定 deck 資料夾";
+            return startupAdapterFallbackReason;
         }
 
         return presentation is UnavailablePresentationAdapter
@@ -200,13 +212,27 @@ public sealed class MainForm : Form
     {
         settings = OpenDesignSettings.Load();
         openDesignProjects = ScanOpenDesignProjects(settings);
-        var useOpenDesign = string.Equals(
-            settings.LastAdapter,
-            "OpenDesign",
-            StringComparison.OrdinalIgnoreCase)
-            && (openDesignRunning || openDesignProjects.Count > 0);
-        return CreateAdapter(useOpenDesign ? "OpenDesign" : "PowerPoint")
-            ?? new UnavailablePresentationAdapter();
+        if (string.Equals(
+                settings.LastAdapter,
+                "OpenDesign",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            if (!OpenDesignProcessDetector.IsRunning())
+            {
+                startupAdapterFallbackReason = "OpenDesign 未執行，已改用 PowerPoint";
+            }
+            else if (openDesignProjects.Count == 0)
+            {
+                startupAdapterFallbackReason = "OpenDesign 尚未設定 deck 資料夾，已改用 PowerPoint";
+            }
+            else
+            {
+                return CreateAdapter("OpenDesign")
+                    ?? new UnavailablePresentationAdapter();
+            }
+        }
+
+        return CreateAdapter("PowerPoint") ?? new UnavailablePresentationAdapter();
     }
 
     private IPresentationAdapter? CreateAdapter(string choice)
@@ -281,6 +307,11 @@ public sealed class MainForm : Form
         {
             BeginInvoke(() => status.Text = error);
         }
+    }
+
+    private void ReportAdapterSelectionError(string error)
+    {
+        OnPresentationError(presentation, error);
     }
 
     private void OnFormClosed(object? sender, FormClosedEventArgs e)
