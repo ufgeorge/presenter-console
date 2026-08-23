@@ -2,12 +2,28 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#111827">
-  <link rel="manifest" href="manifest.webmanifest?v=16">
-  <link rel="stylesheet" href="app.css?v=16">
+  <link rel="manifest" href="manifest.webmanifest?v=17">
+  <link rel="stylesheet" href="app.css?v=17">
   <title>Presenter Console</title>
 </head>
 <body><main>
-  <header class="status-bar"><div class="status-summary"><p id="status" data-i18n="connecting">連線中…</p><button id="wake-warning-toggle" class="warning-icon" type="button" data-i18n-aria="wakeWarningExpand" aria-label="展開螢幕鎖定警告" aria-expanded="false" hidden>⚠️</button></div><h1 id="slide">—</h1></header>
+  <header class="status-bar">
+    <div class="status-summary">
+      <p id="status" data-i18n="connecting">連線中…</p>
+      <button id="wake-warning-toggle" class="warning-icon" type="button"
+        data-i18n-aria="wakeWarningExpand" aria-label="展開螢幕鎖定警告"
+        aria-expanded="false" hidden>⚠️</button>
+    </div>
+    <h1 id="slide">—</h1>
+    <div class="panel-toggles">
+      <button id="presentation-toggle" class="panel-toggle" type="button"
+        data-i18n-aria="presentationPanelExpand" aria-label="展開選擇簡報面板"
+        aria-expanded="false">📁</button>
+      <button id="questions-toggle" class="panel-toggle" type="button"
+        data-i18n-aria="questionsPanelExpand" aria-label="展開觀眾提問面板"
+        aria-expanded="false">💬</button>
+    </div>
+  </header>
   <section id="wake-warning" class="warning" role="status" aria-live="polite" hidden><div><strong data-i18n="wakeTitle">⚠ 螢幕可能會自動鎖定</strong><p data-i18n="wakeText"></p><details><summary data-i18n="wakeSettings">查看設定路徑</summary><ul><li data-i18n="ios"></li><li data-i18n="android"></li></ul></details></div><button id="wake-retry" type="button" data-i18n="retryWake">重新啟用</button></section>
   <section id="voice-warning" class="warning" role="status" aria-live="polite" hidden>
     <div><strong data-i18n="voiceTitle">⚠ 手機未安裝中文語音</strong>
@@ -34,11 +50,11 @@
     <nav class="page-controls" aria-label="Page controls"><button id="prev" type="button" data-i18n="prev">◀ PREV</button><button id="next" type="button" data-i18n="next">NEXT ▶</button></nav>
   </section>
   <section class="secondary-area">
-    <section class="presentation-picker" aria-labelledby="presentation-label">
+    <section class="presentation-picker" aria-labelledby="presentation-label" hidden>
       <h2 id="presentation-label" data-i18n="presentationLabel">選擇要控制的簡報</h2>
       <select id="presentation-select" aria-labelledby="presentation-label"></select>
     </section>
-    <section class="questions-panel" aria-labelledby="questions-label">
+    <section class="questions-panel" aria-labelledby="questions-label" hidden>
       <h2 id="questions-label" data-i18n="questionsLabel">觀眾提問</h2>
       <ul id="questions" aria-live="polite"></ul>
     </section>
@@ -50,6 +66,6 @@
     <footer id="version"></footer>
   </section>
 </main>
-<script src="NoSleep.min.js?v=16"></script>
-<script src="app.js?v=16"></script>
+<script src="NoSleep.min.js?v=17"></script>
+<script src="app.js?v=17"></script>
 </body></html>

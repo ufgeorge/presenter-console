@@ -11,7 +11,7 @@ const CommandType = {
   ActivateAgentWindow: 9,
   DeleteQuestion: 10
 };
-const APP_VERSION = "v16";
+const APP_VERSION = "v17";
 
 const LANGUAGES = {
   "zh-TW": {
@@ -46,6 +46,10 @@ const LANGUAGES = {
     questionTime: question => new Date(question.createdAt).toLocaleTimeString(
       [], { hour: "2-digit", minute: "2-digit" }),
     presentationLabel: "選擇要控制的簡報",
+    presentationPanelExpand: "展開選擇簡報面板",
+    presentationPanelCollapse: "收合選擇簡報面板",
+    questionsPanelExpand: "展開觀眾提問面板",
+    questionsPanelCollapse: "收合觀眾提問面板",
     noPresentations: "目前沒有開啟的簡報",
     prev: "◀ PREV",
     next: "NEXT ▶",
@@ -92,6 +96,10 @@ const LANGUAGES = {
     questionTime: question => new Date(question.createdAt).toLocaleTimeString(
       [], { hour: "2-digit", minute: "2-digit" }),
     presentationLabel: "选择要控制的演示",
+    presentationPanelExpand: "展开选择演示面板",
+    presentationPanelCollapse: "收起选择演示面板",
+    questionsPanelExpand: "展开观众提问面板",
+    questionsPanelCollapse: "收起观众提问面板",
     noPresentations: "目前没有打开的演示",
     prev: "◀ PREV",
     next: "NEXT ▶",
@@ -138,6 +146,10 @@ const LANGUAGES = {
     questionTime: question => new Date(question.createdAt).toLocaleTimeString(
       [], { hour: "2-digit", minute: "2-digit" }),
     presentationLabel: "Choose presentation to control",
+    presentationPanelExpand: "Expand presentation picker",
+    presentationPanelCollapse: "Collapse presentation picker",
+    questionsPanelExpand: "Expand audience questions",
+    questionsPanelCollapse: "Collapse audience questions",
     noPresentations: "No presentations are open",
     prev: "◀ PREV",
     next: "NEXT ▶",
@@ -175,6 +187,10 @@ const voiceWarning = document.querySelector("#voice-warning");
 const voiceDismiss = document.querySelector("#voice-dismiss");
 const presentationSelect = document.querySelector("#presentation-select");
 const questionList = document.querySelector("#questions");
+const presentationPanel = document.querySelector(".presentation-picker");
+const questionsPanel = document.querySelector(".questions-panel");
+const presentationToggle = document.querySelector("#presentation-toggle");
+const questionsToggle = document.querySelector("#questions-toggle");
 let socket;
 let sequence = 0;
 let heartbeatTimer;
@@ -203,6 +219,22 @@ function applyLanguage() {
   }
 
   document.querySelector("#version").textContent = `${text.footer} ${APP_VERSION}`;
+}
+
+function setPanelExpanded(panel, toggle, expanded, expandKey, collapseKey) {
+  panel.hidden = !expanded;
+  toggle.setAttribute("aria-expanded", String(expanded));
+  toggle.setAttribute("aria-label", text[expanded ? collapseKey : expandKey]);
+}
+
+function togglePanel(panel, toggle, expandKey, collapseKey) {
+  setPanelExpanded(
+    panel,
+    toggle,
+    panel.hidden,
+    expandKey,
+    collapseKey
+  );
 }
 
 
@@ -562,6 +594,18 @@ document.querySelector("#start").onclick = () => sendCommand(CommandType.StartPr
 document.querySelector("#start-current").onclick = () => sendCommand(CommandType.StartPresentationFromCurrent);
 wakeWarningToggle.onclick = toggleWakeWarning;
 wakeRetry.onclick = acquireNoSleepFallback;
+presentationToggle.onclick = () => togglePanel(
+  presentationPanel,
+  presentationToggle,
+  "presentationPanelExpand",
+  "presentationPanelCollapse"
+);
+questionsToggle.onclick = () => togglePanel(
+  questionsPanel,
+  questionsToggle,
+  "questionsPanelExpand",
+  "questionsPanelCollapse"
+);
 
 document.addEventListener("click", event => {
   if (wakeFallbackPending && !event.target.closest?.("#wake-warning, #wake-warning-toggle")) acquireNoSleepFallback();

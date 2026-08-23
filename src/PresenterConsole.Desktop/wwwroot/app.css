@@ -24,6 +24,13 @@ main {
   gap: 12px;
 }
 .status-summary { display: flex; align-items: center; min-width: 0; gap: 6px; }
+.panel-toggles { display: flex; flex: 0 0 auto; gap: 4px; }
+.panel-toggle {
+  min-width: 32px;
+  padding: 2px 5px;
+  font-size: 1rem;
+  line-height: 1.2;
+}
 #status {
   margin: 0;
   overflow: hidden;
@@ -180,6 +187,7 @@ button {
   visibility: hidden;
 }
 .warning[hidden] { display: none; }
+[hidden] { display: none !important; }
 .warning.is-visible { opacity: 1; transform: translateY(0); visibility: visible; }
 #voice-warning { bottom: 88px; }
 .warning button { padding: 8px 12px; color: #111827; background: #fff; }
