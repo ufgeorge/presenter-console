@@ -44,5 +44,5 @@
 - [DONE] 同步 `main` 並建立專用分支
 - [DONE] 修正 PowerPointAdapter COM 釋放與 InvalidComObjectException 錯誤處理
 - [DONE] 執行 build、test、行長檢查並修正問題
-- [IN PROGRESS] 建立 PR、讀取 review comments、依留言修正至通過
-- [TODO] 完成驗收回報（含實機測試狀態）
+- [DONE] 建立 PR、讀取 review comments（目前無留言）
+- [BLOCKED] 實機 PowerPoint/手機與跨軟體切換驗收需 George 的 Windows Office 環境
