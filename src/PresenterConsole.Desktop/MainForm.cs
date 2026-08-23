@@ -24,29 +24,63 @@ public sealed class MainForm : Form
         SizeMode = PictureBoxSizeMode.Zoom
     };
 
-    private readonly IPresentationAdapter presentation;
+    private readonly ComboBox adapterChoice = new()
+    {
+        DropDownStyle = ComboBoxStyle.DropDownList,
+        Width = 280
+    };
+
+    private readonly Button applyAdapter = new()
+    {
+        Text = "套用簡報軟體",
+        AutoSize = true
+    };
+
+    private readonly Button configureOpenDesign = new()
+    {
+        Text = "設定 OpenDesign 資料夾",
+        AutoSize = true
+    };
+
+    private IPresentationAdapter presentation;
     private readonly SyncEngine sync = new();
     private readonly OpenDesignSettings openDesignSettings;
+    private IReadOnlyList<OpenDesignProject> openDesignProjects = [];
+    private readonly bool openDesignRunning;
     private AgentServer? server;
 
     public MainForm()
     {
-        presentation = CreatePresentationAdapter(out openDesignSettings);
+        openDesignRunning = OpenDesignProcessDetector.IsRunning();
+        presentation = CreateInitialAdapter(out openDesignSettings);
         Text = "Presenter Console Agent";
         Width = 500;
-        Height = 500;
+        Height = 560;
 
         var panel = new FlowLayoutPanel
         {
             Dock = DockStyle.Fill,
-            FlowDirection = FlowDirection.TopDown
+            FlowDirection = FlowDirection.TopDown,
+            Padding = new Padding(12)
         };
+        panel.Controls.Add(new Label
+        {
+            Text = "簡報軟體",
+            AutoSize = true
+        });
+        panel.Controls.Add(adapterChoice);
+        panel.Controls.Add(applyAdapter);
+        panel.Controls.Add(configureOpenDesign);
         panel.Controls.Add(status);
         panel.Controls.Add(slide);
         panel.Controls.Add(qr);
         Controls.Add(panel);
 
-        presentation.StateChanged += (_, _) => BeginInvoke(RefreshState);
+        PopulateAdapterChoices();
+        SelectCurrentAdapter();
+        SubscribeToPresentation(presentation);
+        applyAdapter.Click += OnApplyAdapter;
+        configureOpenDesign.Click += OnConfigureOpenDesign;
         Load += OnLoadAsync;
         FormClosed += OnFormClosed;
     }
@@ -58,14 +92,87 @@ public sealed class MainForm : Form
         RefreshState();
     }
 
+    private void PopulateAdapterChoices()
+    {
+        adapterChoice.Items.Clear();
+        adapterChoice.Items.Add("PowerPoint（COM 可用）");
+        if (openDesignRunning || openDesignProjects.Count > 0)
+        {
+            adapterChoice.Items.Add("OpenDesign");
+        }
+
+        configureOpenDesign.Enabled = adapterChoice.Items.Contains("OpenDesign");
+    }
+
+    private void SelectCurrentAdapter()
+    {
+        var saved = string.Equals(
+            openDesignSettings.LastAdapter,
+            "OpenDesign",
+            StringComparison.OrdinalIgnoreCase)
+            ? "OpenDesign"
+            : "PowerPoint（COM 可用）";
+        adapterChoice.SelectedItem = adapterChoice.Items.Contains(saved)
+            ? saved
+            : adapterChoice.Items[0];
+    }
+
+    private void OnApplyAdapter(object? sender, EventArgs e)
+    {
+        if (adapterChoice.SelectedItem is not string choice)
+        {
+            return;
+        }
+
+        var next = CreateAdapter(choice);
+        if (next is null)
+        {
+            RefreshState();
+            return;
+        }
+
+        var previous = presentation;
+        UnsubscribeFromPresentation(previous);
+        presentation = next;
+        SubscribeToPresentation(presentation);
+        server?.ReplacePresentation(presentation);
+        previous.Dispose();
+        openDesignSettings.LastAdapter = choice == "OpenDesign" ? "OpenDesign" : "PowerPoint";
+        openDesignSettings.Save();
+        RefreshState();
+    }
+
+    private void OnConfigureOpenDesign(object? sender, EventArgs e)
+    {
+        using var dialog = new FolderBrowserDialog
+        {
+            Description = "選擇 OpenDesign deck 所在的資料夾"
+        };
+        if (dialog.ShowDialog(this) != DialogResult.OK)
+        {
+            return;
+        }
+
+        if (!openDesignSettings.ProjectRoots.Contains(
+                dialog.SelectedPath,
+                StringComparer.OrdinalIgnoreCase))
+        {
+            openDesignSettings.ProjectRoots.Add(dialog.SelectedPath);
+        }
+
+        openDesignSettings.Save();
+        openDesignProjects = ScanOpenDesignProjects();
+        PopulateAdapterChoices();
+        adapterChoice.SelectedItem = "OpenDesign";
+        RefreshState();
+    }
+
     private void RefreshState()
     {
         slide.Text = Localization.SlideNumber(
             presentation.CurrentShowPosition,
             presentation.SlideCount);
-        status.Text = presentation is UnavailablePresentationAdapter
-            ? Localization.StartedUnavailable
-            : Localization.Started;
+        status.Text = GetStatusText();
 
         using var qrData = new QRCodeGenerator().CreateQrCode(
             server?.PairingUrl ?? string.Empty,
@@ -76,27 +183,44 @@ public sealed class MainForm : Form
         qr.Image = new Bitmap(image);
     }
 
-    private void OnFormClosed(object? sender, FormClosedEventArgs e)
+    private string GetStatusText()
     {
-        server?.DisposeAsync();
-        sync.Dispose();
-        presentation.Dispose();
-    }
-
-    private static IPresentationAdapter CreatePresentationAdapter(
-        out OpenDesignSettings settings)
-    {
-        settings = OpenDesignSettings.Load();
-        var projects = ScanOpenDesignProjects(settings);
-        if (projects.Count > 0 && ShouldUseOpenDesign(settings))
+        if (presentation is UnavailablePresentationAdapter && openDesignRunning
+            && openDesignProjects.Count == 0)
         {
-            settings.LastAdapter = "OpenDesign";
-            settings.Save();
-            return new OpenDesignAdapter(projects[0]);
+            return "已偵測到 OpenDesign，但尚未設定 deck 資料夾";
         }
 
-        settings.LastAdapter = "PowerPoint";
-        settings.Save();
+        return presentation is UnavailablePresentationAdapter
+            ? Localization.StartedUnavailable
+            : Localization.Started;
+    }
+
+    private IPresentationAdapter CreateInitialAdapter(out OpenDesignSettings settings)
+    {
+        settings = OpenDesignSettings.Load();
+        openDesignProjects = ScanOpenDesignProjects(settings);
+        var useOpenDesign = string.Equals(
+            settings.LastAdapter,
+            "OpenDesign",
+            StringComparison.OrdinalIgnoreCase)
+            && (openDesignRunning || openDesignProjects.Count > 0);
+        return CreateAdapter(useOpenDesign ? "OpenDesign" : "PowerPoint")
+            ?? new UnavailablePresentationAdapter();
+    }
+
+    private IPresentationAdapter? CreateAdapter(string choice)
+    {
+        if (choice == "OpenDesign")
+        {
+            if (openDesignProjects.Count == 0)
+            {
+                return null;
+            }
+
+            return new OpenDesignAdapter(openDesignProjects[0]);
+        }
+
         try
         {
             return new PowerPointAdapter(SynchronizationContext.Current);
@@ -104,48 +228,67 @@ public sealed class MainForm : Form
         catch (FileNotFoundException exception)
         {
             LogAdapterFallback(exception);
-            return new UnavailablePresentationAdapter();
         }
         catch (InvalidOperationException exception)
         {
             LogAdapterFallback(exception);
-            return new UnavailablePresentationAdapter();
         }
+
+        return new UnavailablePresentationAdapter();
+    }
+
+    private IReadOnlyList<OpenDesignProject> ScanOpenDesignProjects()
+    {
+        return ScanOpenDesignProjects(openDesignSettings);
     }
 
     private static IReadOnlyList<OpenDesignProject> ScanOpenDesignProjects(
         OpenDesignSettings settings)
     {
-        if (settings.ProjectRoots.Count == 0)
-        {
-            return [];
-        }
-
         var scanner = new OpenDesignProjectScanner();
-        var projects = settings.ProjectRoots
+        return settings.ProjectRoots
             .Select(root => Path.IsPathRooted(root)
                 ? root
                 : Path.Combine(AppContext.BaseDirectory, root))
             .Where(Directory.Exists)
             .SelectMany(scanner.Scan)
             .ToArray();
-        return projects;
     }
 
-    private static bool ShouldUseOpenDesign(OpenDesignSettings settings)
+    private void SubscribeToPresentation(IPresentationAdapter adapter)
     {
-        if (string.Equals(settings.LastAdapter, "OpenDesign", StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
+        adapter.StateChanged += OnPresentationStateChanged;
+        adapter.ErrorOccurred += OnPresentationError;
+    }
 
-        var choice = MessageBox.Show(
-            "偵測到 OpenDesign deck。按「是」使用 OpenDesign，按「否」使用 PowerPoint。",
-            "選擇簡報模式",
-            MessageBoxButtons.YesNo,
-            MessageBoxIcon.Question,
-            MessageBoxDefaultButton.Button1);
-        return choice == DialogResult.Yes;
+    private void UnsubscribeFromPresentation(IPresentationAdapter adapter)
+    {
+        adapter.StateChanged -= OnPresentationStateChanged;
+        adapter.ErrorOccurred -= OnPresentationError;
+    }
+
+    private void OnPresentationStateChanged(object? sender, EventArgs e)
+    {
+        if (!IsDisposed)
+        {
+            BeginInvoke(RefreshState);
+        }
+    }
+
+    private void OnPresentationError(object? sender, string error)
+    {
+        if (!IsDisposed)
+        {
+            BeginInvoke(() => status.Text = error);
+        }
+    }
+
+    private void OnFormClosed(object? sender, FormClosedEventArgs e)
+    {
+        server?.DisposeAsync();
+        sync.Dispose();
+        UnsubscribeFromPresentation(presentation);
+        presentation.Dispose();
     }
 
     private static void LogAdapterFallback(Exception exception)
@@ -154,17 +297,14 @@ public sealed class MainForm : Form
         {
             var logPath = Path.Combine(AppContext.BaseDirectory, "presenter-console.log");
             var message = $"[{DateTime.Now:O}] PowerPoint adapter fallback: "
-                + $"{exception.GetType().FullName}: {exception.Message}"
-                + Environment.NewLine;
+                + $"{exception.GetType().FullName}: {exception.Message}{Environment.NewLine}";
             File.AppendAllText(logPath, message);
         }
         catch (IOException)
         {
-            // Logging must not prevent the fallback adapter from starting.
         }
         catch (UnauthorizedAccessException)
         {
-            // Logging must not prevent the fallback adapter from starting.
         }
     }
 }

@@ -19,7 +19,7 @@ public sealed class AgentServer : IAsyncDisposable
         PropertyNameCaseInsensitive = true
     };
 
-    private readonly IPresentationAdapter presentation;
+    private IPresentationAdapter presentation;
     private readonly SyncEngine sync;
     private readonly SynchronizationContext uiContext;
     private readonly List<WebSocket> sockets = [];
@@ -34,8 +34,20 @@ public sealed class AgentServer : IAsyncDisposable
         this.sync = sync;
         uiContext = SynchronizationContext.Current ?? new SynchronizationContext();
         sync.CommandAccepted += OnCommandAccepted;
-        presentation.StateChanged += (_, _) => BroadcastState();
-        presentation.ErrorOccurred += (_, error) => BroadcastError(error);
+        SubscribeToPresentation(presentation);
+    }
+
+    public void ReplacePresentation(IPresentationAdapter replacement)
+    {
+        if (ReferenceEquals(presentation, replacement))
+        {
+            return;
+        }
+
+        UnsubscribeFromPresentation(presentation);
+        presentation = replacement;
+        SubscribeToPresentation(presentation);
+        BroadcastState();
     }
 
     public string PairingUrl => $"http://{GetLanAddress()}:5217/?token={pairingToken}";
@@ -79,6 +91,22 @@ public sealed class AgentServer : IAsyncDisposable
             }
         }, null);
     }
+
+    private void SubscribeToPresentation(IPresentationAdapter adapter)
+    {
+        adapter.StateChanged += OnPresentationStateChanged;
+        adapter.ErrorOccurred += OnPresentationError;
+    }
+
+    private void UnsubscribeFromPresentation(IPresentationAdapter adapter)
+    {
+        adapter.StateChanged -= OnPresentationStateChanged;
+        adapter.ErrorOccurred -= OnPresentationError;
+    }
+
+    private void OnPresentationStateChanged(object? sender, EventArgs e) => BroadcastState();
+
+    private void OnPresentationError(object? sender, string error) => BroadcastError(error);
 
     private async Task HandleWebSocketAsync(HttpContext context)
     {
@@ -278,6 +306,8 @@ public sealed class AgentServer : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        UnsubscribeFromPresentation(presentation);
+        sync.CommandAccepted -= OnCommandAccepted;
         if (application is not null)
         {
             await application.StopAsync();
