@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#111827">
-  <link rel="manifest" href="manifest.webmanifest?v=13"><link rel="stylesheet" href="app.css?v=13"><title>Presenter Console</title>
+  <link rel="manifest" href="manifest.webmanifest?v=14"><link rel="stylesheet" href="app.css?v=14"><title>Presenter Console</title>
 </head>
 <body><main>
   <header class="status-bar"><div class="status-summary"><p id="status" data-i18n="connecting">連線中…</p><button id="wake-warning-toggle" class="warning-icon" type="button" data-i18n-aria="wakeWarningExpand" aria-label="展開螢幕鎖定警告" aria-expanded="false" hidden>⚠️</button></div><h1 id="slide">—</h1></header>
@@ -28,10 +28,10 @@
   <section class="secondary-area">
     <section class="presentation-picker" aria-labelledby="presentation-label">
       <h2 id="presentation-label" data-i18n="presentationLabel">選擇要控制的簡報</h2>
-      <div id="presentation-list"></div>
+      <select id="presentation-select" aria-labelledby="presentation-label"></select>
     </section>
     <section class="presentation-controls" aria-label="Start presentation"><button id="start" type="button" data-i18n="start">▶ 開始簡報</button><button id="start-current" type="button" data-i18n="startCurrent">從目前頁開始</button></section>
     <button id="back" type="button" data-i18n="back">↩ 回簡報</button>
     <footer id="version"></footer>
   </section>
-</main><script src="NoSleep.min.js?v=13"></script><script src="app.js?v=13"></script></body></html>
+</main><script src="NoSleep.min.js?v=14"></script><script src="app.js?v=14"></script></body></html>
