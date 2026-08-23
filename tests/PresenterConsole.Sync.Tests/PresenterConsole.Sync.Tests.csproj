@@ -13,12 +13,18 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\PresenterConsole.Sync\PresenterConsole.Sync.csproj" />
+    <ProjectReference
+      Include="..\..\src\PresenterConsole.Contracts\PresenterConsole.Contracts.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="..\..\src\PresenterConsole.Desktop\OpenDesignHtmlParser.cs" Link="OpenDesignHtmlParser.cs" />
-    <Compile Include="..\..\src\PresenterConsole.Desktop\OpenDesignProjectScanner.cs" Link="OpenDesignProjectScanner.cs" />
+    <Compile Include="..\..\src\PresenterConsole.Desktop\OpenDesignHtmlParser.cs"
+             Link="OpenDesignHtmlParser.cs" />
+    <Compile Include="..\..\src\PresenterConsole.Desktop\OpenDesignProjectScanner.cs"
+             Link="OpenDesignProjectScanner.cs" />
+    <Compile Include="..\..\src\PresenterConsole.Desktop\AudienceQuestionStore.cs"
+             Link="AudienceQuestionStore.cs" />
   </ItemGroup>
 </Project>

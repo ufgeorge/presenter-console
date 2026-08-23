@@ -2,8 +2,8 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#111827">
-  <link rel="manifest" href="manifest.webmanifest?v=15">
-  <link rel="stylesheet" href="app.css?v=15">
+  <link rel="manifest" href="manifest.webmanifest?v=16">
+  <link rel="stylesheet" href="app.css?v=16">
   <title>Presenter Console</title>
 </head>
 <body><main>
@@ -38,11 +38,18 @@
       <h2 id="presentation-label" data-i18n="presentationLabel">選擇要控制的簡報</h2>
       <select id="presentation-select" aria-labelledby="presentation-label"></select>
     </section>
+    <section class="questions-panel" aria-labelledby="questions-label">
+      <h2 id="questions-label" data-i18n="questionsLabel">觀眾提問</h2>
+      <ul id="questions" aria-live="polite"></ul>
+    </section>
     <section class="presentation-controls" aria-label="Start presentation"><button id="start" type="button" data-i18n="start">▶ 開始簡報</button><button id="start-current" type="button" data-i18n="startCurrent">從目前頁開始</button></section>
-    <button id="back" type="button" data-i18n="back">↩ 回簡報</button>
+    <div class="scene-controls">
+      <button id="show-ask-qr" type="button" data-i18n="showAskQr">顯示提問 QR</button>
+      <button id="back" type="button" data-i18n="back">↩ 回簡報</button>
+    </div>
     <footer id="version"></footer>
   </section>
 </main>
-<script src="NoSleep.min.js?v=15"></script>
-<script src="app.js?v=15"></script>
+<script src="NoSleep.min.js?v=16"></script>
+<script src="app.js?v=16"></script>
 </body></html>

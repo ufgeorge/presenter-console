@@ -1,4 +1,4 @@
-const MessageType = { State: 2, Error: 5, Pong: 6 };
+const MessageType = { State: 2, Error: 5, Pong: 6, Questions: 7 };
 const CommandType = {
   Next: 0,
   Previous: 1,
@@ -7,9 +7,11 @@ const CommandType = {
   Ping: 5,
   StartPresentation: 6,
   StartPresentationFromCurrent: 7,
-  SelectPresentation: 8
+  SelectPresentation: 8,
+  ActivateAgentWindow: 9,
+  DeleteQuestion: 10
 };
-const APP_VERSION = "v15";
+const APP_VERSION = "v16";
 
 const LANGUAGES = {
   "zh-TW": {
@@ -37,6 +39,12 @@ const LANGUAGES = {
     start: "▶ 開始簡報",
     startCurrent: "從目前頁開始",
     back: "↩ 回簡報",
+    showAskQr: "顯示提問 QR",
+    questionsLabel: "觀眾提問",
+    noQuestions: "目前沒有觀眾提問",
+    deleteQuestion: "刪除",
+    questionTime: question => new Date(question.createdAt).toLocaleTimeString(
+      [], { hour: "2-digit", minute: "2-digit" }),
     presentationLabel: "選擇要控制的簡報",
     noPresentations: "目前沒有開啟的簡報",
     prev: "◀ PREV",
@@ -77,6 +85,12 @@ const LANGUAGES = {
     start: "▶ 开始演示",
     startCurrent: "从当前页开始",
     back: "↩ 返回演示",
+    showAskQr: "显示提问 QR",
+    questionsLabel: "观众提问",
+    noQuestions: "目前没有观众提问",
+    deleteQuestion: "删除",
+    questionTime: question => new Date(question.createdAt).toLocaleTimeString(
+      [], { hour: "2-digit", minute: "2-digit" }),
     presentationLabel: "选择要控制的演示",
     noPresentations: "目前没有打开的演示",
     prev: "◀ PREV",
@@ -117,6 +131,12 @@ const LANGUAGES = {
     start: "▶ Start presentation",
     startCurrent: "Start from current slide",
     back: "↩ Return to presentation",
+    showAskQr: "Show audience QR",
+    questionsLabel: "Audience questions",
+    noQuestions: "No audience questions yet",
+    deleteQuestion: "Delete",
+    questionTime: question => new Date(question.createdAt).toLocaleTimeString(
+      [], { hour: "2-digit", minute: "2-digit" }),
     presentationLabel: "Choose presentation to control",
     noPresentations: "No presentations are open",
     prev: "◀ PREV",
@@ -154,6 +174,7 @@ const wakeRetry = document.querySelector("#wake-retry");
 const voiceWarning = document.querySelector("#voice-warning");
 const voiceDismiss = document.querySelector("#voice-dismiss");
 const presentationSelect = document.querySelector("#presentation-select");
+const questionList = document.querySelector("#questions");
 let socket;
 let sequence = 0;
 let heartbeatTimer;
@@ -168,6 +189,7 @@ const playedVoiceSlides = new Set();
 let voiceAvailable;
 let voiceWarningDismissed = false;
 let latestState;
+let latestQuestions = [];
 
 function applyLanguage() {
   const language = getLanguage();
@@ -396,6 +418,29 @@ function renderState(state) {
   renderPresentations(state);
 }
 
+function renderQuestions(questions) {
+  latestQuestions = [...(questions || [])].sort(
+    (a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  questionList.replaceChildren();
+  if (!latestQuestions.length) {
+    const empty = document.createElement("li");
+    empty.textContent = text.noQuestions;
+    questionList.append(empty);
+    return;
+  }
+  for (const question of latestQuestions) {
+    const item = document.createElement("li");
+    const content = document.createElement("span");
+    content.textContent = `${text.questionTime(question)}  ${question.text}`;
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.textContent = text.deleteQuestion;
+    remove.onclick = () => sendCommand(CommandType.DeleteQuestion, null, null, question.id);
+    item.append(content, remove);
+    questionList.append(item);
+  }
+}
+
 function renderPresentations(state) {
   presentationSelect.replaceChildren();
   const presentations = state.presentations || [];
@@ -438,7 +483,7 @@ function createCommandId() {
     .join("");
 }
 
-function sendCommand(type, slideNumber = null, presentationId = null) {
+function sendCommand(type, slideNumber = null, presentationId = null, questionId = null) {
   try {
     if (socket?.readyState !== WebSocket.OPEN) {
       status.textContent = text.sendFailed;
@@ -452,7 +497,8 @@ function sendCommand(type, slideNumber = null, presentationId = null) {
         sequence: ++sequence,
         type,
         slide: slideNumber,
-        presentationId
+        presentationId,
+        questionId
       }
     }));
     return true;
@@ -488,6 +534,8 @@ function connect() {
       renderState(message.state);
     } else if (message.type === MessageType.Error) {
       status.textContent = message.error || text.rejected;
+    } else if (message.type === MessageType.Questions) {
+      renderQuestions(message.questions);
     }
   };
 
@@ -509,6 +557,7 @@ document.querySelector("#back").onclick = () => {
     setTimeout(() => sendCommand(CommandType.SyncRequest), 100);
   }
 };
+document.querySelector("#show-ask-qr").onclick = () => sendCommand(CommandType.ActivateAgentWindow);
 document.querySelector("#start").onclick = () => sendCommand(CommandType.StartPresentation);
 document.querySelector("#start-current").onclick = () => sendCommand(CommandType.StartPresentationFromCurrent);
 wakeWarningToggle.onclick = toggleWakeWarning;
@@ -528,5 +577,5 @@ voiceDismiss.onclick = () => {
   setVoiceWarning(false);
 };
 setupVoiceAvailability();
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=15");
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=16");
 connect();

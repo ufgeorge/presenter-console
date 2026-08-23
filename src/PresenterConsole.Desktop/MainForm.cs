@@ -1,6 +1,7 @@
 using System.Drawing;
 using System.Reflection;
 using QRCoder;
+using PresenterConsole.Contracts;
 using PresenterConsole.Sync;
 
 namespace PresenterConsole.Desktop;
@@ -43,6 +44,22 @@ public sealed class MainForm : Form
         AutoSize = true
     };
 
+    private readonly ListBox questionList = new()
+    {
+        Width = 440,
+        Height = 100,
+        HorizontalScrollbar = true
+    };
+
+    private readonly Button deleteQuestion = new()
+    {
+        Text = "刪除選定問題",
+        AutoSize = true
+    };
+    private IReadOnlyList<AudienceQuestion> displayedQuestions = [];
+
+    private Form? audienceQrForm;
+
     private IPresentationAdapter presentation;
     private readonly SyncEngine sync = new();
     private readonly OpenDesignSettings openDesignSettings;
@@ -74,7 +91,15 @@ public sealed class MainForm : Form
         panel.Controls.Add(configureOpenDesign);
         panel.Controls.Add(status);
         panel.Controls.Add(slide);
+        panel.Controls.Add(new Label
+        {
+            Text = "控制端配對 QR",
+            AutoSize = true
+        });
         panel.Controls.Add(qr);
+        panel.Controls.Add(new Label { Text = "觀眾提問", AutoSize = true });
+        panel.Controls.Add(questionList);
+        panel.Controls.Add(deleteQuestion);
         Controls.Add(panel);
 
         PopulateAdapterChoices();
@@ -83,6 +108,7 @@ public sealed class MainForm : Form
         adapterChoice.SelectedIndexChanged += OnAdapterChoiceChanged;
         applyAdapter.Click += OnApplyAdapter;
         configureOpenDesign.Click += OnConfigureOpenDesign;
+        deleteQuestion.Click += OnDeleteQuestion;
         Load += OnLoadAsync;
         FormClosed += OnFormClosed;
     }
@@ -90,8 +116,12 @@ public sealed class MainForm : Form
     private async void OnLoadAsync(object? sender, EventArgs e)
     {
         server = new AgentServer(presentation, sync);
+        server.QuestionsChanged += OnQuestionsChanged;
+        server.AgentWindowRequested += OnAgentWindowRequested;
+        server.AgentWindowClosedRequested += OnAgentWindowClosedRequested;
         await server.StartAsync(CancellationToken.None);
         RefreshState();
+        RefreshQuestions();
     }
 
     private void PopulateAdapterChoices()
@@ -204,6 +234,63 @@ public sealed class MainForm : Form
         using var stream = new MemoryStream(png);
         using var image = Image.FromStream(stream);
         qr.Image = new Bitmap(image);
+    }
+
+    private void OnQuestionsChanged(object? sender, EventArgs e)
+    {
+        if (!IsDisposed)
+        {
+            BeginInvoke(RefreshQuestions);
+        }
+    }
+
+    private void RefreshQuestions()
+    {
+        questionList.Items.Clear();
+        displayedQuestions = server?.Questions ?? [];
+        foreach (var question in displayedQuestions)
+        {
+            questionList.Items.Add(
+                $"{question.CreatedAt.ToLocalTime():HH:mm}  {question.Text}");
+        }
+    }
+
+    private void OnDeleteQuestion(object? sender, EventArgs e)
+    {
+        var index = questionList.SelectedIndex;
+        if (index >= 0 && index < displayedQuestions.Count)
+        {
+            SendDeleteQuestion(displayedQuestions[index].Id);
+        }
+    }
+
+    private void SendDeleteQuestion(string questionId)
+    {
+        server?.DeleteQuestionFromAgent(questionId);
+    }
+
+    private void OnAgentWindowRequested(object? sender, EventArgs e)
+    {
+        ShowAudienceQr();
+    }
+
+    private void OnAgentWindowClosedRequested(object? sender, EventArgs e)
+    {
+        audienceQrForm?.Close();
+    }
+
+    private void ShowAudienceQr()
+    {
+        if (audienceQrForm is { IsDisposed: false })
+        {
+            audienceQrForm.Activate();
+            return;
+        }
+
+        var askUrl = server?.AskUrl ?? string.Empty;
+        audienceQrForm = new AudienceQrForm(askUrl);
+        audienceQrForm.FormClosed += (_, _) => audienceQrForm = null;
+        audienceQrForm.Show(this);
     }
 
     private string GetStatusText()
@@ -326,6 +413,13 @@ public sealed class MainForm : Form
 
     private void OnFormClosed(object? sender, FormClosedEventArgs e)
     {
+        audienceQrForm?.Close();
+        if (server is not null)
+        {
+            server.QuestionsChanged -= OnQuestionsChanged;
+            server.AgentWindowRequested -= OnAgentWindowRequested;
+            server.AgentWindowClosedRequested -= OnAgentWindowClosedRequested;
+        }
         server?.DisposeAsync();
         sync.Dispose();
         UnsubscribeFromPresentation(presentation);
@@ -346,6 +440,42 @@ public sealed class MainForm : Form
         }
         catch (UnauthorizedAccessException)
         {
+        }
+    }
+
+    private sealed class AudienceQrForm : Form
+    {
+        public AudienceQrForm(string url)
+        {
+            Text = "觀眾提問 QR";
+            WindowState = FormWindowState.Maximized;
+            TopMost = true;
+            BackColor = Color.White;
+
+            var title = new Label
+            {
+                Text = "掃描 QR 提問",
+                Dock = DockStyle.Top,
+                Height = 70,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font(SystemFonts.DefaultFont.FontFamily, 28, FontStyle.Bold),
+                ForeColor = Color.Black
+            };
+            var image = new PictureBox
+            {
+                Dock = DockStyle.Fill,
+                SizeMode = PictureBoxSizeMode.Zoom,
+                Padding = new Padding(40)
+            };
+            using var data = new QRCodeGenerator().CreateQrCode(
+                url, QRCodeGenerator.ECCLevel.Q);
+            var png = new PngByteQRCode(data).GetGraphic(12);
+            using var stream = new MemoryStream(png);
+            using var bitmap = Image.FromStream(stream);
+            image.Image = new Bitmap(bitmap);
+
+            Controls.Add(image);
+            Controls.Add(title);
         }
     }
 }

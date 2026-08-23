@@ -23,6 +23,7 @@ public sealed class AgentServer : IAsyncDisposable
     private readonly SyncEngine sync;
     private readonly SynchronizationContext uiContext;
     private readonly List<WebSocket> sockets = [];
+    private readonly AudienceQuestionStore questionStore = new();
     private readonly string pairingToken = Convert.ToHexString(
         RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
     private readonly DateTimeOffset tokenExpiresAt = DateTimeOffset.UtcNow.AddHours(2);
@@ -52,6 +53,22 @@ public sealed class AgentServer : IAsyncDisposable
 
     public string PairingUrl => $"http://{GetLanAddress()}:5217/?token={pairingToken}";
 
+    public string AskUrl => $"http://{GetLanAddress()}:5217/ask";
+
+    public IReadOnlyList<AudienceQuestion> Questions
+    {
+        get
+        {
+            return questionStore.Questions;
+        }
+    }
+
+    public event EventHandler? QuestionsChanged;
+    public event EventHandler? AgentWindowRequested;
+    public event EventHandler? AgentWindowClosedRequested;
+
+    public void DeleteQuestionFromAgent(string questionId) => DeleteQuestion(questionId);
+
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         var builder = WebApplication.CreateBuilder();
@@ -61,6 +78,12 @@ public sealed class AgentServer : IAsyncDisposable
         application.UseStaticFiles();
         application.UseWebSockets();
         application.Map("/ws", HandleWebSocketAsync);
+        application.MapGet("/ask", async context =>
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, "wwwroot", "ask.html");
+            await context.Response.SendFileAsync(path);
+        });
+        application.MapPost("/api/ask", HandleAskAsync);
         await application.StartAsync(cancellationToken);
     }
 
@@ -80,7 +103,14 @@ public sealed class AgentServer : IAsyncDisposable
                     presentation.GotoSlide(slide);
                     break;
                 case CommandType.ActivatePowerPoint:
+                    AgentWindowClosedRequested?.Invoke(this, EventArgs.Empty);
                     presentation.ActivateWindow();
+                    break;
+                case CommandType.DeleteQuestion when command.QuestionId is { } questionId:
+                    DeleteQuestion(questionId);
+                    break;
+                case CommandType.ActivateAgentWindow:
+                    AgentWindowRequested?.Invoke(this, EventArgs.Empty);
                     break;
                 case CommandType.StartPresentation:
                     presentation.StartPresentation(fromCurrentSlide: false);
@@ -88,7 +118,8 @@ public sealed class AgentServer : IAsyncDisposable
                 case CommandType.StartPresentationFromCurrent:
                     presentation.StartPresentation(fromCurrentSlide: true);
                     break;
-                case CommandType.SelectPresentation when command.PresentationId is { } presentationId:
+                case CommandType.SelectPresentation
+                    when command.PresentationId is { } presentationId:
                     if (!presentation.SelectPresentation(presentationId))
                     {
                         BroadcastError("找不到選定的簡報，請重新整理清單");
@@ -141,6 +172,7 @@ public sealed class AgentServer : IAsyncDisposable
         }
 
         await SendSafelyAsync(socket, new WireMessage(MessageType.State, State: State()));
+        await SendSafelyAsync(socket, QuestionsMessage());
         var buffer = new byte[8192];
 
         try
@@ -192,6 +224,68 @@ public sealed class AgentServer : IAsyncDisposable
         {
             WriteDiagnosticLog("WS client disconnected");
             RemoveSocket(socket);
+        }
+    }
+
+    private async Task HandleAskAsync(HttpContext context)
+    {
+        var request = await context.Request.ReadFromJsonAsync<AskRequest>(JsonOptions);
+        var text = request?.Text?.Trim();
+        if (string.IsNullOrWhiteSpace(text) || text.Length > 200)
+        {
+            await WriteJsonErrorAsync(context, StatusCodes.Status400BadRequest,
+                "問題不可為空白，且最多 200 字");
+            return;
+        }
+
+        var address = context.Connection.RemoteIpAddress ?? IPAddress.None;
+        if (!questionStore.TryAdd(
+                text, address, DateTimeOffset.UtcNow, out var question,
+                out var error, out var rateLimited))
+        {
+            var statusCode = rateLimited
+                ? StatusCodes.Status429TooManyRequests
+                : StatusCodes.Status400BadRequest;
+            await WriteJsonErrorAsync(context, statusCode, error);
+            return;
+        }
+
+        QuestionsChanged?.Invoke(this, EventArgs.Empty);
+        BroadcastQuestions();
+        await context.Response.WriteAsJsonAsync(question, JsonOptions);
+    }
+
+    private static async Task WriteJsonErrorAsync(
+        HttpContext context, int statusCode, string message)
+    {
+        context.Response.StatusCode = statusCode;
+        await context.Response.WriteAsJsonAsync(new { error = message }, JsonOptions);
+    }
+
+    private void DeleteQuestion(string questionId)
+    {
+        if (questionStore.Remove(questionId))
+        {
+            QuestionsChanged?.Invoke(this, EventArgs.Empty);
+            BroadcastQuestions();
+        }
+    }
+
+    private WireMessage QuestionsMessage() => new(
+        MessageType.Questions, Questions: Questions);
+
+    private void BroadcastQuestions()
+    {
+        WebSocket[] clients;
+        lock (sockets)
+        {
+            clients = sockets.ToArray();
+        }
+
+        var message = QuestionsMessage();
+        foreach (var client in clients)
+        {
+            _ = SendSafelyAsync(client, message);
         }
     }
 
@@ -315,6 +409,8 @@ public sealed class AgentServer : IAsyncDisposable
 
         return "127.0.0.1";
     }
+
+    private sealed record AskRequest(string? Text);
 
     public async ValueTask DisposeAsync()
     {
