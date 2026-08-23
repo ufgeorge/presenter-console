@@ -13,7 +13,10 @@ public sealed class OpenDesignScannerTests
     [Fact]
     public void ScannerFindsDeckAndIgnoresOtherArtifactKinds()
     {
-        var projects = new OpenDesignProjectScanner(Path.Combine(Path.GetTempPath(), $"missing-{Guid.NewGuid():N}"))
+        var missingAppData = Path.Combine(
+            Path.GetTempPath(),
+            $"missing-{Guid.NewGuid():N}");
+        var projects = new OpenDesignProjectScanner(missingAppData)
             .Scan(FixtureDirectory);
 
         var project = Assert.Single(projects);
@@ -54,7 +57,9 @@ public sealed class OpenDesignScannerTests
                          "sample-deck.html.artifact.json"
                      })
             {
-                File.Copy(Path.Combine(FixtureDirectory, fileName), Path.Combine(projectDirectory, fileName));
+                var sourcePath = Path.Combine(FixtureDirectory, fileName);
+                var destinationPath = Path.Combine(projectDirectory, fileName);
+                File.Copy(sourcePath, destinationPath);
             }
 
             appData = CreateProjectDatabase("project-123", "AI-agent-ppt-1 現場版");
@@ -76,7 +81,10 @@ public sealed class OpenDesignScannerTests
     [Fact]
     public void ScannerFallsBackWhenDatabaseDoesNotExist()
     {
-        var projects = new OpenDesignProjectScanner(Path.Combine(Path.GetTempPath(), $"missing-{Guid.NewGuid():N}"))
+        var missingAppData = Path.Combine(
+            Path.GetTempPath(),
+            $"missing-{Guid.NewGuid():N}");
+        var projects = new OpenDesignProjectScanner(missingAppData)
             .Scan(FixtureDirectory);
 
         Assert.Equal("sample-deck", Assert.Single(projects).DisplayName);
@@ -86,17 +94,27 @@ public sealed class OpenDesignScannerTests
     public void ScannerFallsBackAndReportsDatabaseQueryFailure()
     {
         var appData = Path.Combine(Path.GetTempPath(), $"opendesign-appdata-{Guid.NewGuid():N}");
-        var databaseDirectory = Path.Combine(appData, "Open Design", "namespaces", "namespace-1", "data");
+        var databaseDirectory = Path.Combine(
+            appData,
+            "Open Design",
+            "namespaces",
+            "namespace-1",
+            "data");
         Directory.CreateDirectory(databaseDirectory);
         File.WriteAllText(Path.Combine(databaseDirectory, "app.sqlite"), "not a sqlite database");
         var diagnostics = new List<string>();
 
         try
         {
-            var projects = new OpenDesignProjectScanner(appData, diagnostics.Add).Scan(FixtureDirectory);
+            var scanner = new OpenDesignProjectScanner(appData, diagnostics.Add);
+            var projects = scanner.Scan(FixtureDirectory);
 
             Assert.Equal("sample-deck", Assert.Single(projects).DisplayName);
-            Assert.Contains(diagnostics, message => message.Contains("query failed", StringComparison.OrdinalIgnoreCase));
+            Assert.Contains(
+                diagnostics,
+                message => message.Contains(
+                    "query failed",
+                    StringComparison.OrdinalIgnoreCase));
         }
         finally
         {
@@ -108,14 +126,21 @@ public sealed class OpenDesignScannerTests
     private static string CreateProjectDatabase(string projectId, string projectName)
     {
         var appData = Path.Combine(Path.GetTempPath(), $"opendesign-appdata-{Guid.NewGuid():N}");
-        var databaseDirectory = Path.Combine(appData, "Open Design", "namespaces", "namespace-1", "data");
+        var databaseDirectory = Path.Combine(
+            appData,
+            "Open Design",
+            "namespaces",
+            "namespace-1",
+            "data");
         Directory.CreateDirectory(databaseDirectory);
         var databasePath = Path.Combine(databaseDirectory, "app.sqlite");
         using (var connection = new SqliteConnection($"Data Source={databasePath}"))
         {
             connection.Open();
             using var command = connection.CreateCommand();
-            command.CommandText = "CREATE TABLE projects (id TEXT PRIMARY KEY, name TEXT NOT NULL); INSERT INTO projects (id, name) VALUES ($id, $name);";
+            command.CommandText = "CREATE TABLE projects ("
+                + "id TEXT PRIMARY KEY, name TEXT NOT NULL);"
+                + " INSERT INTO projects (id, name) VALUES ($id, $name);";
             command.Parameters.AddWithValue("$id", projectId);
             command.Parameters.AddWithValue("$name", projectName);
             command.ExecuteNonQuery();

@@ -96,10 +96,14 @@ public sealed class OpenDesignProjectScanner
     private Dictionary<string, string> ReadProjectNames()
     {
         var names = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        var namespacesDirectory = Path.Combine(applicationDataDirectory, "Open Design", "namespaces");
+        var namespacesDirectory = Path.Combine(
+            applicationDataDirectory,
+            "Open Design",
+            "namespaces");
         if (!Directory.Exists(namespacesDirectory))
         {
-            diagnosticLogger($"OpenDesign project database directory not found: {namespacesDirectory}");
+            diagnosticLogger(
+                $"OpenDesign project database directory not found: {namespacesDirectory}");
             return names;
         }
 
@@ -107,7 +111,10 @@ public sealed class OpenDesignProjectScanner
         try
         {
             databasePaths = Directory.EnumerateDirectories(namespacesDirectory)
-                .Select(namespaceDirectory => Path.Combine(namespaceDirectory, "data", "app.sqlite"))
+                .Select(namespaceDirectory => Path.Combine(
+                    namespaceDirectory,
+                    "data",
+                    "app.sqlite"))
                 .Where(File.Exists)
                 .ToArray();
         }
@@ -124,7 +131,8 @@ public sealed class OpenDesignProjectScanner
 
         if (databasePaths.Length == 0)
         {
-            diagnosticLogger($"OpenDesign project database file not found under: {namespacesDirectory}");
+            diagnosticLogger(
+                $"OpenDesign project database file not found under: {namespacesDirectory}");
             return names;
         }
 
@@ -166,15 +174,21 @@ public sealed class OpenDesignProjectScanner
         }
         catch (SqliteException exception)
         {
-            diagnosticLogger($"OpenDesign project database query failed ({databasePath}): {exception.Message}");
+            diagnosticLogger(
+                $"OpenDesign project database query failed ({databasePath}): "
+                + exception.Message);
         }
         catch (IOException exception)
         {
-            diagnosticLogger($"OpenDesign project database read failed ({databasePath}): {exception.Message}");
+            diagnosticLogger(
+                $"OpenDesign project database read failed ({databasePath}): "
+                + exception.Message);
         }
         catch (UnauthorizedAccessException exception)
         {
-            diagnosticLogger($"OpenDesign project database access denied ({databasePath}): {exception.Message}");
+            diagnosticLogger(
+                $"OpenDesign project database access denied ({databasePath}): "
+                + exception.Message);
         }
     }
 
@@ -194,7 +208,9 @@ public sealed class OpenDesignProjectScanner
         try
         {
             var logPath = Path.Combine(AppContext.BaseDirectory, "presenter-console.log");
-            File.AppendAllText(logPath, $"[{DateTime.Now:O}] OpenDesign scanner diagnostic: {message}{Environment.NewLine}");
+            var logEntry = $"[{DateTime.Now:O}] OpenDesign scanner diagnostic: {message}"
+                + Environment.NewLine;
+            File.AppendAllText(logPath, logEntry);
         }
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
