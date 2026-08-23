@@ -1,0 +1,28 @@
+:root { color-scheme: dark; font-family: system-ui, sans-serif; }
+body { margin: 0; background: #111827; color: #f9fafb; }
+main { box-sizing: border-box; max-width: 680px; margin: auto; padding: 32px 20px; }
+h1 { font-size: clamp(2rem, 8vw, 3.5rem); }
+textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 14px;
+  color: #111827;
+  background: #fff;
+  border-radius: 10px;
+  font: inherit;
+}
+button {
+  width: 100%;
+  margin-top: 16px;
+  padding: 16px;
+  border: 0;
+  border-radius: 10px;
+  color: #fff;
+  background: #2563eb;
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+button:disabled { opacity: .6; }
+#result { min-height: 1.5em; font-weight: bold; }
+.success { color: #4ade80; }
+.error { color: #f87171; }

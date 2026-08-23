@@ -10,7 +10,9 @@ public enum CommandType
     Ping,
     StartPresentation,
     StartPresentationFromCurrent,
-    SelectPresentation
+    SelectPresentation,
+    ActivateAgentWindow,
+    DeleteQuestion
 }
 
 public enum MessageType
@@ -21,7 +23,8 @@ public enum MessageType
     Heartbeat,
     SyncRequest,
     Error,
-    Pong
+    Pong,
+    Questions
 }
 
 public sealed record AgentCommand(
@@ -29,7 +32,8 @@ public sealed record AgentCommand(
     long Sequence,
     CommandType Type,
     int? Slide = null,
-    string? PresentationId = null);
+    string? PresentationId = null,
+    string? QuestionId = null);
 
 public sealed record PresentationInfo(string Id, string Name, string FullName);
 
@@ -42,9 +46,12 @@ public sealed record PresentationState(
     IReadOnlyList<PresentationInfo>? Presentations = null,
     string? SelectedPresentationId = null);
 
+public sealed record AudienceQuestion(string Id, string Text, DateTime CreatedAt);
+
 public sealed record WireMessage(
     MessageType Type,
     AgentCommand? Command = null,
     PresentationState? State = null,
     string? PairingToken = null,
-    string? Error = null);
+    string? Error = null,
+    IReadOnlyList<AudienceQuestion>? Questions = null);

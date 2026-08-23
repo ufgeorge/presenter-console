@@ -120,6 +120,20 @@ button {
   border-radius: 12px;
 }
 .presentation-picker h2 { margin: 0 0 8px; font-size: 1rem; }
+.questions-panel {
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 10px;
+  background: #1f2937;
+  border-radius: 12px;
+}
+.questions-panel h2 { margin: 0 0 8px; font-size: 1rem; }
+#questions { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+#questions li { display: flex; align-items: center; gap: 8px; color: #e5e7eb; }
+#questions li span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+#questions button { flex: 0 0 auto; padding: 6px 10px; font-size: .85rem; }
+.scene-controls { display: flex; gap: 12px; }
+.scene-controls button { flex: 1; background: #7c3aed; }
 #presentation-select {
   width: 100%;
   box-sizing: border-box;

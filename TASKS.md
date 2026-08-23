@@ -1,5 +1,12 @@
 # Sprint 1 PR review fixes
 
+## Issue #93 工作追蹤
+- [IN PROGRESS] 讀取規格、同步 main 並建立專用分支
+- [TODO] 實作 Audience Q&A protocol、HTTP API、QR Scene 與 Agent 面板
+- [TODO] 實作觀眾提問頁與控制端三語問題列表
+- [TODO] 執行測試、build、node 語法與行長驗證
+- [TODO] 建立 PR、讀取並處理 review comments
+
 ## TODO
 - [x] Issue #34：限制 Notes 版面高度、確保控制按鈕可見並更新 PWA 快取版本
 - [x] Issue #9：修復手機 NEXT/PREV 控制、拒絕命令診斷與 PowerPoint COM log
