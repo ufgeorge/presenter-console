@@ -16,6 +16,15 @@
 5. Codex 有疑問可直接在 PR 留言問 Vivia
 6. Merge 由 Vivia 或人類執行，Codex 永不 merge 自己的 PR
 
+## 🔌 Codex 執行環境（網路權限，必讀）
+
+本環境 Codex sandbox **預設關閉外部網路**（官方文件："By default, the agent runs with network access turned off"）。
+
+- GitHub 遠端操作（`git pull`、`git push`、`gh pr`、`gh issue`）一律**直接使用 `require_escalated` 外部網路權限執行**，不要先用 sandbox 預設權限重試
+- 其他外網指令（`curl`、`npm/pip install`、`gh api` 等）同樣先請求網路權限再執行
+- 嚴禁自行改用 `--yolo` / `--sandbox danger-full-access` / `--dangerously-bypass-approvals-and-sandbox` 等繞過 sandbox 的參數 — 那是全開放權限，不是「只開網路」的正確做法
+- 網路被拒時停下來明確告知「需要外部網路權限執行 <指令>」並請求批准，不要跳過 git/gh 操作
+
 ## 🏁 Task Completion Policy
 
 - 不得在分析/規劃/部分實作/進度摘要後停止；不得只描述下一步，要直接執行；進度摘要 ≠ 任務完成
