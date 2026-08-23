@@ -92,6 +92,13 @@ public sealed class PowerPointAdapter : IPresentationAdapter
     private static extern bool SetForegroundWindow(IntPtr windowHandle);
 
     [DllImport("user32.dll")]
+    private static extern void keybd_event(
+        byte virtualKey,
+        byte scanCode,
+        uint flags,
+        UIntPtr extraInfo);
+
+    [DllImport("user32.dll")]
     private static extern bool IsIconic(IntPtr windowHandle);
 
     [DllImport("user32.dll")]
@@ -102,6 +109,9 @@ public sealed class PowerPointAdapter : IPresentationAdapter
 
     private const int SwRestore = 9;
     private const int RestoreDelayMilliseconds = 100;
+    private const int AltVirtualKey = 0x12;
+    private const uint KeyEventKeyUp = 0x0002;
+    private const int AltActivationDelayMilliseconds = 50;
 
     private void SubscribeToApplication(PowerPoint.Application target)
     {
@@ -477,37 +487,69 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         return WindowActivationResult.NotFound;
     }
 
-    private static bool BringWindowToForeground(IntPtr windowHandle)
+    private bool BringWindowToForeground(IntPtr windowHandle)
     {
         if (windowHandle == IntPtr.Zero)
         {
+            LogDiagnostic("BringWindowToForeground step=validate-hwnd result=failed hwnd=0");
             return false;
         }
 
         if (IsIconic(windowHandle))
         {
-            ShowWindow(windowHandle, SwRestore);
+            var restored = ShowWindow(windowHandle, SwRestore);
+            LogDiagnostic(
+                $"BringWindowToForeground step=restore result={(restored ? "success" : "failed")} "
+                + $"hwnd={windowHandle}");
             Thread.Sleep(RestoreDelayMilliseconds);
         }
+        else
+        {
+            LogDiagnostic($"BringWindowToForeground step=restore result=not-needed hwnd={windowHandle}");
+        }
+
+        keybd_event(AltVirtualKey, 0, 0, UIntPtr.Zero);
+        keybd_event(AltVirtualKey, 0, KeyEventKeyUp, UIntPtr.Zero);
+        LogDiagnostic($"BringWindowToForeground step=alt-foreground-pierce result=success hwnd={windowHandle}");
+        Thread.Sleep(AltActivationDelayMilliseconds);
 
         var targetThreadId = GetWindowThreadProcessId(windowHandle, IntPtr.Zero);
         var currentThreadId = GetCurrentThreadId();
+        LogDiagnostic(
+            $"BringWindowToForeground step=get-window-thread result={(targetThreadId == 0 ? "failed" : "success")} "
+            + $"hwnd={windowHandle} targetThreadId={targetThreadId} currentThreadId={currentThreadId}");
         if (targetThreadId == 0)
         {
             return false;
         }
 
-        var attached = targetThreadId != currentThreadId
+        var needsAttach = targetThreadId != currentThreadId;
+        var attached = needsAttach
             && AttachThreadInput(currentThreadId, targetThreadId, true);
+        LogDiagnostic(
+            $"BringWindowToForeground step=attach-thread-input result={(needsAttach ? (attached ? "success" : "failed") : "not-needed")} "
+            + $"sourceThreadId={currentThreadId} targetThreadId={targetThreadId}");
         try
         {
-            return SetForegroundWindow(windowHandle);
+            var setForeground = SetForegroundWindow(windowHandle);
+            var actualForeground = GetForegroundWindow();
+            var verified = actualForeground == windowHandle;
+            LogDiagnostic(
+                $"BringWindowToForeground step=set-foreground result={(setForeground ? "success" : "failed")} "
+                + $"hwnd={windowHandle}");
+            LogDiagnostic(
+                $"BringWindowToForeground step=verify-foreground result={(verified ? "success" : "failed")} "
+                + $"actualHwnd={actualForeground} targetHwnd={windowHandle}");
+            return setForeground && verified;
         }
         finally
         {
             if (attached)
             {
-                AttachThreadInput(currentThreadId, targetThreadId, false);
+                var detached = AttachThreadInput(currentThreadId, targetThreadId, false);
+                LogDiagnostic(
+                    $"BringWindowToForeground step=detach-thread-input result={(detached ? "success" : "failed")} "
+                    + $"sourceThreadId={currentThreadId} targetThreadId={targetThreadId}");
             }
         }
     }

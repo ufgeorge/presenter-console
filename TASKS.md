@@ -98,3 +98,10 @@
 - [DONE] 讀取 issue #75、專案規範並同步 `main`
 - [DONE] OpenDesign scanner 讀取 daemon `/api/projects` 名稱並保留 fallback
 - [DONE] 執行測試、build、`git diff --check`，建立 PR 並處理 review comments
+
+## Issue #79 工作追蹤
+- [DONE] 讀取 issue #79、專案規範並同步 `main`
+- [DONE] ALT 模擬前景鎖穿透，保留 AttachThreadInput 與實際前景驗證
+- [DONE] 加入還原、thread attach、SetForegroundWindow 與前景驗證診斷 log
+- [DONE] Agent 標題顯示版本，csproj 設定 Version 0.9.0
+- [DONE] 執行 build、test、`git diff --check`
