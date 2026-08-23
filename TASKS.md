@@ -154,4 +154,4 @@
 - [DONE] 將簡報選擇與觀眾提問面板改為 status bar icon 獨立收合
 - [DONE] 同步三語 aria、PWA v17 資源 query 與 Service Worker cache
 - [DONE] 完成三 viewport 版面與互動驗證、node check、build、test
-- [TODO] 開 PR、讀取 review comments，完成後切回 `main`
+- [DONE] 建立 PR #98、讀取 review comments（目前無留言）
