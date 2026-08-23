@@ -7,7 +7,6 @@
 - [x] Issue #18：修復非 secure context 下 crypto.randomUUID 導致手機命令無法送出
 - [x] Issue #20：修復 COMReferenceTracker 釋放放映視窗導致開始簡報立即結束
 
-
 ## IN PROGRESS
 - [x] Issue #34：限制 Notes 版面高度、確保控制按鈕可見並更新 PWA 快取版本
 - [x] Issue #30：手機 Notes 與換頁控制響應式版面、字級/字色設定
@@ -16,8 +15,6 @@
 - [x] Issue #18：實作與驗證
 - [x] Issue #20：實作與驗證
 - [x] Issue #22：實作與驗證
-
-
 - [x] Issue #22：COM 事件 marshal 到 UI thread、COM 狀態快取與 RPC 崩潰診斷
 - [x] Issue #24：放映立即結束診斷與 SendKeys F5 替代放映路徑
 - [x] Issue #26：SendKeys 焦點競態、移除 COM fallback、PowerPoint 崩潰重連
@@ -41,3 +38,11 @@
 
 ## BLOCKED
 - Real PowerPoint/phone 200-run acceptance requires Windows Office hardware.
+
+## Issue #46 工作追蹤
+- [DONE] 讀取 `AGENTS.md`、`PROJECT_CONTEXT.md`、`docs/mvp-spec.md`
+- [DONE] 同步 `main` 並建立專用分支
+- [DONE] 修正 PowerPointAdapter COM 釋放與 InvalidComObjectException 錯誤處理
+- [DONE] 執行 build、test、行長檢查並修正問題
+- [IN PROGRESS] 建立 PR、讀取 review comments、依留言修正至通過
+- [TODO] 完成驗收回報（含實機測試狀態）
