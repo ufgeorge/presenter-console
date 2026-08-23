@@ -87,4 +87,4 @@
 - [DONE] 讀取 issue #70 規格並同步 `main`
 - [DONE] 將手機簡報挑選 UI 改為 `<select>`，更新 CSS、cache version/query
 - [DONE] 執行 JavaScript 語法檢查、相關測試與三 viewport 版面驗證
-- [IN PROGRESS] 提交變更、rebase/push、開 PR 並讀取 PR comments 修正至通過
+- [DONE] 提交變更、rebase/push、開 PR 並讀取 PR comments（目前無留言）
