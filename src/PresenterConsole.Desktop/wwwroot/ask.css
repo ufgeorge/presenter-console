@@ -26,3 +26,24 @@ button:disabled { opacity: .6; }
 #result { min-height: 1.5em; font-weight: bold; }
 .success { color: #4ade80; }
 .error { color: #f87171; }
+#history {
+  margin-top: 28px;
+  padding: 20px;
+  background: #1f2937;
+  border-radius: 12px;
+}
+#history h2 { margin-top: 0; font-size: 1.25rem; }
+#history-empty { color: #9ca3af; }
+#history-list { margin: 0; padding-left: 1.5rem; }
+#history-list li {
+  padding: 10px 0;
+  color: #f9fafb;
+  overflow-wrap: anywhere;
+}
+#history-list li + li { border-top: 1px solid #374151; }
+#history-list time {
+  display: block;
+  margin-bottom: 4px;
+  color: #9ca3af;
+  font-size: .875rem;
+}
