@@ -121,4 +121,4 @@
 - [DONE] 讀取 issue #86、專案規範並同步 `main`
 - [DONE] 將 PPT 開始放映改為對文件視窗 PostMessage 送 F5
 - [DONE] 執行 build、test、diff 與行長檢查
-- [IN PROGRESS] 建立 PR 並處理 review comments
+- [DONE] 建立 PR 並處理 review comments（PR #87，目前無留言）
