@@ -217,7 +217,8 @@ public sealed class PowerPointAdapter : IPresentationAdapter
 
             RefreshActualState();
         }
-        catch (COMException exception)
+        catch (Exception exception) when (
+            exception is COMException or InvalidComObjectException)
         {
             ReportComFailure("ActivateWindow", exception);
         }
@@ -265,7 +266,8 @@ public sealed class PowerPointAdapter : IPresentationAdapter
                     return;
                 }
             }
-            catch (COMException exception)
+            catch (Exception exception) when (
+                exception is COMException or InvalidComObjectException)
             {
                 ReportComFailure("StartPresentation", exception);
                 return;
@@ -312,7 +314,8 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             currentNotes = ReadNotes(CurrentShowPosition);
             StateChanged?.Invoke(this, EventArgs.Empty);
         }
-        catch (COMException exception)
+        catch (Exception exception) when (
+            exception is COMException or InvalidComObjectException)
         {
             ReportComFailure(operation, exception);
         }
@@ -335,7 +338,8 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             currentNotes = ReadNotes(CurrentShowPosition);
             StateChanged?.Invoke(this, EventArgs.Empty);
         }
-        catch (COMException exception)
+        catch (Exception exception) when (
+            exception is COMException or InvalidComObjectException)
         {
             ReportComFailure("RefreshActualState", exception);
         }
@@ -427,37 +431,6 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             LogComException(exception);
         }
 
-        try
-        {
-            if (presentation is not null && Marshal.IsComObject(presentation))
-            {
-                Marshal.FinalReleaseComObject(presentation);
-            }
-        }
-        catch (ArgumentNullException exception)
-        {
-            LogComException(exception);
-        }
-        catch (COMException exception)
-        {
-            LogComException(exception);
-        }
-
-        try
-        {
-            if (application is not null && Marshal.IsComObject(application))
-            {
-                Marshal.FinalReleaseComObject(application);
-            }
-        }
-        catch (ArgumentNullException exception)
-        {
-            LogComException(exception);
-        }
-        catch (COMException exception)
-        {
-            LogComException(exception);
-        }
     }
     private static void LogDiagnostic(string message)
     {
@@ -477,7 +450,7 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         }
     }
 
-    private void ReportComFailure(string operation, COMException exception)
+    private void ReportComFailure(string operation, Exception exception)
     {
         LogComException(exception);
         if (IsPowerPointUnavailable(exception))
@@ -510,7 +483,7 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         }, null);
     }
 
-    private static bool IsPowerPointUnavailable(COMException exception) =>
+    private static bool IsPowerPointUnavailable(Exception exception) =>
         exception.HResult == unchecked((int)0x800706BA);
 
     private static void LogComException(Exception exception)
