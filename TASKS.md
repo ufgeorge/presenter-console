@@ -110,4 +110,4 @@
 - [DONE] 讀取 issue #81、專案規範並同步 `main`
 - [DONE] 以 OpenDesign app.sqlite 取代 daemon 名稱查詢並加入診斷 log
 - [DONE] 新增 SQLite 對照/ fallback 測試
-- [IN PROGRESS] 執行 build、test、`git diff --check`、建立 PR 並處理 review comments
+- [DONE] 執行 build、test、`git diff --check`、建立 PR 並處理 review comments
