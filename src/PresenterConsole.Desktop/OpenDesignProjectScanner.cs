@@ -12,6 +12,9 @@ public sealed record OpenDesignProject(
 
 public sealed class OpenDesignProjectScanner
 {
+    private const string DaemonProjectsUri = "http://127.0.0.1:7456/api/projects";
+    private static readonly HttpClient SharedDaemonClient = new();
+
     private static readonly string[] DisplayNameKeys =
     [
         "displayName",
@@ -40,6 +43,13 @@ public sealed class OpenDesignProjectScanner
         "thumbnailPath"
     ];
 
+    private readonly HttpClient daemonClient;
+
+    public OpenDesignProjectScanner(HttpClient? daemonClient = null)
+    {
+        this.daemonClient = daemonClient ?? SharedDaemonClient;
+    }
+
     public IReadOnlyList<OpenDesignProject> Scan(string rootDirectory)
     {
         if (!Directory.Exists(rootDirectory))
@@ -47,6 +57,7 @@ public sealed class OpenDesignProjectScanner
             return [];
         }
 
+        var daemonNames = ReadDaemonProjectNames();
         var projects = new List<OpenDesignProject>();
         try
         {
@@ -63,7 +74,7 @@ public sealed class OpenDesignProjectScanner
                 var project = TryReadProject(artifactPath);
                 if (project is not null)
                 {
-                    projects.Add(project);
+                    projects.Add(ApplyDaemonDisplayName(project, daemonNames));
                 }
             }
         }
@@ -77,6 +88,93 @@ public sealed class OpenDesignProjectScanner
         return projects
             .OrderBy(project => project.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToArray();
+    }
+
+    private Dictionary<string, string> ReadDaemonProjectNames()
+    {
+        try
+        {
+            using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            using var response = daemonClient
+                .GetAsync(DaemonProjectsUri, cancellation.Token)
+                .GetAwaiter()
+                .GetResult();
+            if (!response.IsSuccessStatusCode)
+            {
+                return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            }
+
+            using var document = JsonDocument.Parse(
+                response.Content.ReadAsStringAsync(cancellation.Token).GetAwaiter().GetResult());
+            return ParseDaemonProjectNames(document.RootElement);
+        }
+        catch (HttpRequestException)
+        {
+            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        }
+        catch (OperationCanceledException)
+        {
+            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        }
+        catch (JsonException)
+        {
+            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    private static Dictionary<string, string> ParseDaemonProjectNames(JsonElement root)
+    {
+        var names = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        IEnumerable<JsonElement> entries = root.ValueKind == JsonValueKind.Array
+            ? root.EnumerateArray().ToArray()
+            : FindProjectArray(root);
+
+        foreach (var entry in entries)
+        {
+            if (entry.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            var id = GetFirstString(entry, ["id", "projectId"]);
+            var name = GetFirstString(entry, ["name"]);
+            if (!string.IsNullOrWhiteSpace(id) && !string.IsNullOrWhiteSpace(name))
+            {
+                names[id] = name;
+            }
+        }
+
+        return names;
+    }
+
+    private static IEnumerable<JsonElement> FindProjectArray(JsonElement root)
+    {
+        if (root.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in root.EnumerateObject())
+            {
+                if (property.Value.ValueKind == JsonValueKind.Array
+                    && (string.Equals(property.Name, "projects", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(property.Name, "data", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(property.Name, "results", StringComparison.OrdinalIgnoreCase)))
+                {
+                    return property.Value.EnumerateArray();
+                }
+            }
+        }
+
+        return [];
+    }
+
+    private static OpenDesignProject ApplyDaemonDisplayName(
+        OpenDesignProject project,
+        IReadOnlyDictionary<string, string> daemonNames)
+    {
+        var projectId = Path.GetFileName(Path.GetDirectoryName(project.HtmlPath));
+        return projectId is not null
+            && daemonNames.TryGetValue(projectId, out var daemonName)
+            ? project with { DisplayName = CleanDisplayName(daemonName) }
+            : project;
     }
 
     private static OpenDesignProject? TryReadProject(string artifactPath)
