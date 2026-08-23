@@ -115,4 +115,4 @@
 ## Issue #83 工作追蹤
 - [DONE] 讀取 issue #83、專案規範並同步 `main`
 - [DONE] ALT 前景鎖穿透改為 SHIFT，更新診斷 log
-- [IN PROGRESS] 執行 build、test、`git diff --check`、建立 PR 並處理 review comments
+- [DONE] 執行 build、test、`git diff --check`、建立 PR 並處理 review comments（目前無留言）
