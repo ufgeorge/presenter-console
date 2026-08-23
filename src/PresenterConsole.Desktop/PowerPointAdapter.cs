@@ -409,25 +409,54 @@ public sealed class PowerPointAdapter : IPresentationAdapter
     {
         try
         {
-            application.SlideShowNextSlide -= OnSlideShowNextSlide;
-            application.SlideShowBegin -= OnSlideShowBegin;
-            application.SlideShowEnd -= OnSlideShowEnd;
-            application.PresentationOpen -= OnPresentationOpen;
-            application.PresentationClose -= OnPresentationClose;
+            if (application is not null)
+            {
+                application.SlideShowNextSlide -= OnSlideShowNextSlide;
+                application.SlideShowBegin -= OnSlideShowBegin;
+                application.SlideShowEnd -= OnSlideShowEnd;
+                application.PresentationOpen -= OnPresentationOpen;
+                application.PresentationClose -= OnPresentationClose;
+            }
+        }
+        catch (ArgumentNullException exception)
+        {
+            LogComException(exception);
         }
         catch (COMException exception)
         {
             LogComException(exception);
         }
 
-        if (Marshal.IsComObject(presentation!))
+        try
         {
-            Marshal.FinalReleaseComObject(presentation!);
+            if (presentation is not null && Marshal.IsComObject(presentation))
+            {
+                Marshal.FinalReleaseComObject(presentation);
+            }
+        }
+        catch (ArgumentNullException exception)
+        {
+            LogComException(exception);
+        }
+        catch (COMException exception)
+        {
+            LogComException(exception);
         }
 
-        if (Marshal.IsComObject(application))
+        try
         {
-            Marshal.FinalReleaseComObject(application);
+            if (application is not null && Marshal.IsComObject(application))
+            {
+                Marshal.FinalReleaseComObject(application);
+            }
+        }
+        catch (ArgumentNullException exception)
+        {
+            LogComException(exception);
+        }
+        catch (COMException exception)
+        {
+            LogComException(exception);
         }
     }
     private static void LogDiagnostic(string message)
