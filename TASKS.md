@@ -111,3 +111,8 @@
 - [DONE] 以 OpenDesign app.sqlite 取代 daemon 名稱查詢並加入診斷 log
 - [DONE] 新增 SQLite 對照/ fallback 測試
 - [DONE] 執行 build、test、`git diff --check`、建立 PR 並處理 review comments
+
+## Issue #83 工作追蹤
+- [DONE] 讀取 issue #83、專案規範並同步 `main`
+- [DONE] ALT 前景鎖穿透改為 SHIFT，更新診斷 log
+- [DONE] 執行 build、test、`git diff --check`、建立 PR 並處理 review comments（目前無留言）
