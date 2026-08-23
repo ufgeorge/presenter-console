@@ -132,6 +132,7 @@
 - [DONE] Android 語音播放 resume 與中文語音可用性提示
 - [DONE] 執行前端語法、build、test 與新增行長檢查
 - [DONE] 建立 PR 並處理 review comments
+- [DONE] 依 review bump PWA cache／資源版本至 v15
 - [DONE] 建立 PR 並處理 review comments（PR #87，目前無留言）
 
 ## Issue #89 工作追蹤

@@ -9,7 +9,7 @@ const CommandType = {
   StartPresentationFromCurrent: 7,
   SelectPresentation: 8
 };
-const APP_VERSION = "v14";
+const APP_VERSION = "v15";
 
 const LANGUAGES = {
   "zh-TW": {
@@ -528,5 +528,5 @@ voiceDismiss.onclick = () => {
   setVoiceWarning(false);
 };
 setupVoiceAvailability();
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=14");
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=15");
 connect();
