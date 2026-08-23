@@ -43,8 +43,8 @@
 - [DONE] 讀取 issue #48 規格並同步 `main`
 - [DONE] 永遠顯示 PowerPoint + OpenDesign，並在套用時即時偵測
 - [DONE] 強化 OpenDesign process/window title 偵測
-- [IN PROGRESS] 執行 build、test、lint 並開 PR
-- [TODO] 讀取 PR comments，依 review 修正到通過
+- [DONE] 執行 build、test、lint 並開 PR
+- [DONE] 讀取 PR comments（目前無留言）
 
 ## Issue #46 工作追蹤
 - [DONE] 讀取 `AGENTS.md`、`PROJECT_CONTEXT.md`、`docs/mvp-spec.md`
