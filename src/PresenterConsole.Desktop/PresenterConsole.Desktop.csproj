@@ -17,6 +17,7 @@
     <ProjectReference Include="..\PresenterConsole.Contracts\PresenterConsole.Contracts.csproj" />
     <ProjectReference Include="..\PresenterConsole.Sync\PresenterConsole.Sync.csproj" />
     <PackageReference Include="QRCoder" Version="1.6.0" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.8" />
     <PackageReference Include="Microsoft.Office.Interop.PowerPoint" Version="15.0.4420.1018" />
   </ItemGroup>
   <ItemGroup>

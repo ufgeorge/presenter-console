@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Data.Sqlite;
 
 namespace PresenterConsole.Desktop;
 
@@ -12,9 +13,6 @@ public sealed record OpenDesignProject(
 
 public sealed class OpenDesignProjectScanner
 {
-    private const string DaemonProjectsUri = "http://127.0.0.1:7456/api/projects";
-    private static readonly HttpClient SharedDaemonClient = new();
-
     private static readonly string[] DisplayNameKeys =
     [
         "displayName",
@@ -43,11 +41,16 @@ public sealed class OpenDesignProjectScanner
         "thumbnailPath"
     ];
 
-    private readonly HttpClient daemonClient;
+    private readonly string applicationDataDirectory;
+    private readonly Action<string> diagnosticLogger;
 
-    public OpenDesignProjectScanner(HttpClient? daemonClient = null)
+    public OpenDesignProjectScanner(
+        string? applicationDataDirectory = null,
+        Action<string>? diagnosticLogger = null)
     {
-        this.daemonClient = daemonClient ?? SharedDaemonClient;
+        this.applicationDataDirectory = applicationDataDirectory
+            ?? Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        this.diagnosticLogger = diagnosticLogger ?? LogDiagnostic;
     }
 
     public IReadOnlyList<OpenDesignProject> Scan(string rootDirectory)
@@ -57,7 +60,7 @@ public sealed class OpenDesignProjectScanner
             return [];
         }
 
-        var daemonNames = ReadDaemonProjectNames();
+        var projectNames = ReadProjectNames();
         var projects = new List<OpenDesignProject>();
         try
         {
@@ -74,7 +77,7 @@ public sealed class OpenDesignProjectScanner
                 var project = TryReadProject(artifactPath);
                 if (project is not null)
                 {
-                    projects.Add(ApplyDaemonDisplayName(project, daemonNames));
+                    projects.Add(ApplyDatabaseDisplayName(project, projectNames));
                 }
             }
         }
@@ -90,91 +93,127 @@ public sealed class OpenDesignProjectScanner
             .ToArray();
     }
 
-    private Dictionary<string, string> ReadDaemonProjectNames()
-    {
-        try
-        {
-            using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-            using var response = daemonClient
-                .GetAsync(DaemonProjectsUri, cancellation.Token)
-                .GetAwaiter()
-                .GetResult();
-            if (!response.IsSuccessStatusCode)
-            {
-                return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            }
-
-            using var document = JsonDocument.Parse(
-                response.Content.ReadAsStringAsync(cancellation.Token).GetAwaiter().GetResult());
-            return ParseDaemonProjectNames(document.RootElement);
-        }
-        catch (HttpRequestException)
-        {
-            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        }
-        catch (OperationCanceledException)
-        {
-            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        }
-        catch (JsonException)
-        {
-            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        }
-    }
-
-    private static Dictionary<string, string> ParseDaemonProjectNames(JsonElement root)
+    private Dictionary<string, string> ReadProjectNames()
     {
         var names = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        IEnumerable<JsonElement> entries = root.ValueKind == JsonValueKind.Array
-            ? root.EnumerateArray().ToArray()
-            : FindProjectArray(root);
-
-        foreach (var entry in entries)
+        var namespacesDirectory = Path.Combine(
+            applicationDataDirectory,
+            "Open Design",
+            "namespaces");
+        if (!Directory.Exists(namespacesDirectory))
         {
-            if (entry.ValueKind != JsonValueKind.Object)
-            {
-                continue;
-            }
-
-            var id = GetFirstString(entry, ["id", "projectId"]);
-            var name = GetFirstString(entry, ["name"]);
-            if (!string.IsNullOrWhiteSpace(id) && !string.IsNullOrWhiteSpace(name))
-            {
-                names[id] = name;
-            }
+            diagnosticLogger(
+                $"OpenDesign project database directory not found: {namespacesDirectory}");
+            return names;
         }
 
+        string[] databasePaths;
+        try
+        {
+            databasePaths = Directory.EnumerateDirectories(namespacesDirectory)
+                .Select(namespaceDirectory => Path.Combine(
+                    namespaceDirectory,
+                    "data",
+                    "app.sqlite"))
+                .Where(File.Exists)
+                .ToArray();
+        }
+        catch (IOException exception)
+        {
+            diagnosticLogger($"OpenDesign project database discovery failed: {exception.Message}");
+            return names;
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            diagnosticLogger($"OpenDesign project database discovery denied: {exception.Message}");
+            return names;
+        }
+
+        if (databasePaths.Length == 0)
+        {
+            diagnosticLogger(
+                $"OpenDesign project database file not found under: {namespacesDirectory}");
+            return names;
+        }
+
+        foreach (var databasePath in databasePaths)
+        {
+            ReadProjectNames(databasePath, names);
+        }
         return names;
     }
 
-    private static IEnumerable<JsonElement> FindProjectArray(JsonElement root)
+    private void ReadProjectNames(string databasePath, IDictionary<string, string> names)
     {
-        if (root.ValueKind == JsonValueKind.Object)
+        try
         {
-            foreach (var property in root.EnumerateObject())
+            var connectionString = new SqliteConnectionStringBuilder
             {
-                if (property.Value.ValueKind == JsonValueKind.Array
-                    && (string.Equals(property.Name, "projects", StringComparison.OrdinalIgnoreCase)
-                        || string.Equals(property.Name, "data", StringComparison.OrdinalIgnoreCase)
-                        || string.Equals(property.Name, "results", StringComparison.OrdinalIgnoreCase)))
+                DataSource = databasePath,
+                Mode = SqliteOpenMode.ReadOnly,
+                Cache = SqliteCacheMode.Private,
+                Pooling = false
+            }.ToString();
+            using var connection = new SqliteConnection(connectionString);
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT id, name FROM projects";
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                if (!reader.IsDBNull(0) && !reader.IsDBNull(1))
                 {
-                    return property.Value.EnumerateArray();
+                    var id = reader.GetString(0);
+                    var name = reader.GetString(1);
+                    if (!string.IsNullOrWhiteSpace(id) && !string.IsNullOrWhiteSpace(name))
+                    {
+                        names[id] = name;
+                    }
                 }
             }
         }
-
-        return [];
+        catch (SqliteException exception)
+        {
+            diagnosticLogger(
+                $"OpenDesign project database query failed ({databasePath}): "
+                + exception.Message);
+        }
+        catch (IOException exception)
+        {
+            diagnosticLogger(
+                $"OpenDesign project database read failed ({databasePath}): "
+                + exception.Message);
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            diagnosticLogger(
+                $"OpenDesign project database access denied ({databasePath}): "
+                + exception.Message);
+        }
     }
 
-    private static OpenDesignProject ApplyDaemonDisplayName(
+    private static OpenDesignProject ApplyDatabaseDisplayName(
         OpenDesignProject project,
-        IReadOnlyDictionary<string, string> daemonNames)
+        IReadOnlyDictionary<string, string> projectNames)
     {
         var projectId = Path.GetFileName(Path.GetDirectoryName(project.HtmlPath));
         return projectId is not null
-            && daemonNames.TryGetValue(projectId, out var daemonName)
-            ? project with { DisplayName = CleanDisplayName(daemonName) }
+            && projectNames.TryGetValue(projectId, out var projectName)
+            ? project with { DisplayName = CleanDisplayName(projectName) }
             : project;
+    }
+
+    private static void LogDiagnostic(string message)
+    {
+        try
+        {
+            var logPath = Path.Combine(AppContext.BaseDirectory, "presenter-console.log");
+            var logEntry = $"[{DateTime.Now:O}] OpenDesign scanner diagnostic: {message}"
+                + Environment.NewLine;
+            File.AppendAllText(logPath, logEntry);
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
     }
 
     private static OpenDesignProject? TryReadProject(string artifactPath)

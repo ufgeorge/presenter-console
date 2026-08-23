@@ -1,5 +1,5 @@
 using PresenterConsole.Desktop;
-using System.Net;
+using Microsoft.Data.Sqlite;
 using Xunit;
 
 namespace PresenterConsole.Sync.Tests;
@@ -13,7 +13,11 @@ public sealed class OpenDesignScannerTests
     [Fact]
     public void ScannerFindsDeckAndIgnoresOtherArtifactKinds()
     {
-        var projects = new OpenDesignProjectScanner().Scan(FixtureDirectory);
+        var missingAppData = Path.Combine(
+            Path.GetTempPath(),
+            $"missing-{Guid.NewGuid():N}");
+        var projects = new OpenDesignProjectScanner(missingAppData)
+            .Scan(FixtureDirectory);
 
         var project = Assert.Single(projects);
         Assert.Equal("sample-deck", project.DisplayName);
@@ -37,11 +41,12 @@ public sealed class OpenDesignScannerTests
     }
 
     [Fact]
-    public void ScannerUsesDaemonProjectNameWhenHtmlParentMatchesProjectId()
+    public void ScannerUsesDatabaseProjectNameWhenHtmlParentMatchesProjectId()
     {
         var root = Path.Combine(Path.GetTempPath(), $"opendesign-scanner-{Guid.NewGuid():N}");
         var projectDirectory = Path.Combine(root, "project-123");
         Directory.CreateDirectory(projectDirectory);
+        var appData = string.Empty;
 
         try
         {
@@ -52,41 +57,95 @@ public sealed class OpenDesignScannerTests
                          "sample-deck.html.artifact.json"
                      })
             {
-                File.Copy(Path.Combine(FixtureDirectory, fileName), Path.Combine(projectDirectory, fileName));
+                var sourcePath = Path.Combine(FixtureDirectory, fileName);
+                var destinationPath = Path.Combine(projectDirectory, fileName);
+                File.Copy(sourcePath, destinationPath);
             }
 
-            using var client = new HttpClient(new StubHttpMessageHandler(
-                "{\"projects\":[{\"id\":\"project-123\",\"name\":\"AI-agent-ppt-1 現場版\"}] }"));
-            var project = Assert.Single(new OpenDesignProjectScanner(client).Scan(root));
+            appData = CreateProjectDatabase("project-123", "AI-agent-ppt-1 現場版");
+            var project = Assert.Single(new OpenDesignProjectScanner(appData).Scan(root));
 
             Assert.Equal("AI-agent-ppt-1 現場版", project.DisplayName);
         }
         finally
         {
             Directory.Delete(root, recursive: true);
+            SqliteConnection.ClearAllPools();
+            if (Directory.Exists(appData))
+            {
+                Directory.Delete(appData, recursive: true);
+            }
         }
     }
 
     [Fact]
-    public void ScannerFallsBackWhenDaemonDoesNotRespondWithProjects()
+    public void ScannerFallsBackWhenDatabaseDoesNotExist()
     {
-        using var client = new HttpClient(new StubHttpMessageHandler("{\"projects\":[]}"));
-
-        var projects = new OpenDesignProjectScanner(client).Scan(FixtureDirectory);
+        var missingAppData = Path.Combine(
+            Path.GetTempPath(),
+            $"missing-{Guid.NewGuid():N}");
+        var projects = new OpenDesignProjectScanner(missingAppData)
+            .Scan(FixtureDirectory);
 
         Assert.Equal("sample-deck", Assert.Single(projects).DisplayName);
     }
 
-    private sealed class StubHttpMessageHandler(string responseBody) : HttpMessageHandler
+    [Fact]
+    public void ScannerFallsBackAndReportsDatabaseQueryFailure()
     {
-        protected override Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage request,
-            CancellationToken cancellationToken)
+        var appData = Path.Combine(Path.GetTempPath(), $"opendesign-appdata-{Guid.NewGuid():N}");
+        var databaseDirectory = Path.Combine(
+            appData,
+            "Open Design",
+            "namespaces",
+            "namespace-1",
+            "data");
+        Directory.CreateDirectory(databaseDirectory);
+        File.WriteAllText(Path.Combine(databaseDirectory, "app.sqlite"), "not a sqlite database");
+        var diagnostics = new List<string>();
+
+        try
         {
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new StringContent(responseBody)
-            });
+            var scanner = new OpenDesignProjectScanner(appData, diagnostics.Add);
+            var projects = scanner.Scan(FixtureDirectory);
+
+            Assert.Equal("sample-deck", Assert.Single(projects).DisplayName);
+            Assert.Contains(
+                diagnostics,
+                message => message.Contains(
+                    "query failed",
+                    StringComparison.OrdinalIgnoreCase));
         }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            Directory.Delete(appData, recursive: true);
+        }
+    }
+
+    private static string CreateProjectDatabase(string projectId, string projectName)
+    {
+        var appData = Path.Combine(Path.GetTempPath(), $"opendesign-appdata-{Guid.NewGuid():N}");
+        var databaseDirectory = Path.Combine(
+            appData,
+            "Open Design",
+            "namespaces",
+            "namespace-1",
+            "data");
+        Directory.CreateDirectory(databaseDirectory);
+        var databasePath = Path.Combine(databaseDirectory, "app.sqlite");
+        using (var connection = new SqliteConnection($"Data Source={databasePath}"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "CREATE TABLE projects ("
+                + "id TEXT PRIMARY KEY, name TEXT NOT NULL);"
+                + " INSERT INTO projects (id, name) VALUES ($id, $name);";
+            command.Parameters.AddWithValue("$id", projectId);
+            command.Parameters.AddWithValue("$name", projectName);
+            command.ExecuteNonQuery();
+        }
+
+        return appData;
     }
 }
