@@ -11,7 +11,8 @@ namespace PresenterConsole.Desktop;
 
 public sealed class OpenDesignAdapter : IPresentationAdapter
 {
-    private readonly OpenDesignProject project;
+    private readonly IReadOnlyList<OpenDesignProject> projects;
+    private OpenDesignProject project;
     private readonly System.Threading.Timer refreshTimer;
     private int expectedPosition;
     private int currentPosition;
@@ -29,18 +30,23 @@ public sealed class OpenDesignAdapter : IPresentationAdapter
     public int CurrentShowPosition => currentPosition;
     public int SlideCount => project.PageCount;
     public string CurrentNotes => currentNotes;
-    public IReadOnlyList<PresentationInfo> Presentations =>
-    [
-        new PresentationInfo(
+    public IReadOnlyList<PresentationInfo> Presentations => projects
+        .Select(project => new PresentationInfo(
             project.ArtifactPath,
             project.DisplayName,
-            project.HtmlPath)
-    ];
+            project.HtmlPath))
+        .ToArray();
     public string? SelectedPresentationId => project.ArtifactPath;
 
-    public OpenDesignAdapter(OpenDesignProject project)
+    public OpenDesignAdapter(IReadOnlyList<OpenDesignProject> projects)
     {
-        this.project = project;
+        if (projects.Count == 0)
+        {
+            throw new ArgumentException("至少需要一個 OpenDesign project", nameof(projects));
+        }
+
+        this.projects = projects;
+        project = projects[0];
         expectedPosition = project.PageCount > 0 ? 1 : 0;
         currentPosition = expectedPosition;
         RefreshActualState(raiseEvent: false);
@@ -51,8 +57,31 @@ public sealed class OpenDesignAdapter : IPresentationAdapter
             TimeSpan.FromSeconds(1.5));
     }
 
-    public bool SelectPresentation(string presentationId) =>
-        string.Equals(presentationId, project.ArtifactPath, StringComparison.OrdinalIgnoreCase);
+    public bool SelectPresentation(string presentationId)
+    {
+        var selectedProject = projects.FirstOrDefault(candidate =>
+            string.Equals(
+                candidate.ArtifactPath,
+                presentationId,
+                StringComparison.OrdinalIgnoreCase));
+        if (selectedProject is null
+            || string.Equals(
+                selectedProject.ArtifactPath,
+                project.ArtifactPath,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return selectedProject is not null;
+        }
+
+        project = selectedProject;
+        targetWindowHandle = IntPtr.Zero;
+        expectedPosition = 1;
+        currentPosition = 0;
+        currentNotes = string.Empty;
+        RefreshActualState(raiseEvent: false);
+        StateChanged?.Invoke(this, EventArgs.Empty);
+        return true;
+    }
 
     public void Next() => SendNavigationKey("{RIGHT}", 1);
 

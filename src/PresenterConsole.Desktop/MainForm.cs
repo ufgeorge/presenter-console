@@ -239,7 +239,7 @@ public sealed class MainForm : Form
                 return null;
             }
 
-            return new OpenDesignAdapter(openDesignProjects[0]);
+            return new OpenDesignAdapter(openDesignProjects);
         }
 
         try
