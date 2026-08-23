@@ -39,6 +39,7 @@
 2. 開新任務分支前先 `git checkout main && git pull`
 3. 開 PR 前 `git rebase origin/main`
 4. 任務中途發現相關需求 → 先記下，不夾帶，當前任務完成後再開新任務
+5. **任務收尾必切回 main（George 2026-08-23 明令）**：每次任務完成（開 PR 後 / 處理完 review comment 後）一律 `git checkout main && git pull` — 測試機 repo 必須留在 main（George 會在測試機直接 build，留在分支 = 測到舊版/錯誤版本，已連續踩 3 次）；不需要等 merge 通知（merge 由 Vivia/人類執行，Codex 做完就切回）
 
 ## PR 描述四要素（缺一打回）
 
