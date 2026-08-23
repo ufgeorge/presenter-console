@@ -41,6 +41,59 @@ public sealed class OpenDesignScannerTests
     }
 
     [Fact]
+    public void ParserPrefersSpeakerNotesJsonAndCountsJsonPages()
+    {
+        const string html = """
+            <script id="speaker-notes" type="application/json">
+            ["[開錄影]\n第一頁", "第二頁", "第三頁"]
+            </script>
+            <section class="slide"><aside class="speaker-notes">
+            逐字稿：第一頁
+            </aside></section>
+            """;
+
+        Assert.Equal(3, OpenDesignHtmlParser.CountSlidesFromHtml(html));
+        Assert.Equal("[開錄影]\n第一頁", OpenDesignHtmlParser.ReadNotesFromHtml(html, 1));
+        Assert.Equal("第三頁", OpenDesignHtmlParser.ReadNotesFromHtml(html, 3));
+        Assert.Equal(string.Empty, OpenDesignHtmlParser.ReadNotesFromHtml(html, 4));
+    }
+
+    [Fact]
+    public void ParserFallsBackToAsideWhenSpeakerNotesJsonIsMissing()
+    {
+        const string html = """
+            <section class="slide">
+            <aside class="speaker-notes">舊格式<br>講稿</aside>
+            </section>
+            """;
+
+        Assert.Equal(1, OpenDesignHtmlParser.CountSlidesFromHtml(html));
+        Assert.Equal(
+            "舊格式\n講稿",
+            OpenDesignHtmlParser.ReadNotesFromHtml(html, 1));
+    }
+
+    [Fact]
+    public void ParserFallsBackToAsideWhenSpeakerNotesJsonIsInvalid()
+    {
+        const string html = """
+            <script id="speaker-notes" type="application/json">not json</script>
+            <section class="slide">
+            <aside class="speaker-notes">損壞 JSON 的 fallback</aside>
+            </section>
+            """;
+
+        var exception = Record.Exception(
+            () => OpenDesignHtmlParser.ReadNotesFromHtml(html, 1));
+
+        Assert.Null(exception);
+        Assert.Equal(
+            "損壞 JSON 的 fallback",
+            OpenDesignHtmlParser.ReadNotesFromHtml(html, 1));
+        Assert.Equal(1, OpenDesignHtmlParser.CountSlidesFromHtml(html));
+    }
+
+    [Fact]
     public void ScannerUsesDatabaseProjectNameWhenHtmlParentMatchesProjectId()
     {
         var root = Path.Combine(Path.GetTempPath(), $"opendesign-scanner-{Guid.NewGuid():N}");
