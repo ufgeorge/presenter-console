@@ -9,7 +9,7 @@ const CommandType = {
   StartPresentationFromCurrent: 7,
   SelectPresentation: 8
 };
-const APP_VERSION = "v10";
+const APP_VERSION = "v11";
 
 const LANGUAGES = {
   "zh-TW": {
@@ -151,6 +151,9 @@ let noSleep;
 let wakeFallbackPending = false;
 let wakeWarningTimer;
 let wakeWarningHideTimer;
+let voiceSequenceToken = 0;
+let voiceTimer;
+let voiceSlide;
 
 function applyLanguage() {
   const language = getLanguage();
@@ -258,11 +261,84 @@ async function acquireNoSleepFallback() {
   }
 }
 
+function parseVoiceSequence(noteText) {
+  const sequence = [];
+  const commandPattern = /\[(voice|\d+\s*sec)\]/gi;
+  let activeCommand;
+  let cursor = 0;
+  let match;
+
+  while ((match = commandPattern.exec(noteText || "")) !== null) {
+    if (activeCommand === "voice") {
+      const voiceText = noteText.slice(cursor, match.index).trim();
+      if (voiceText) sequence.push({ type: "voice", text: voiceText });
+    }
+
+    activeCommand = match[1].toLowerCase() === "voice" ? "voice" : "delay";
+    if (activeCommand === "delay") {
+      sequence.push({ type: "delay", seconds: Number.parseInt(match[1], 10) });
+    }
+    cursor = commandPattern.lastIndex;
+  }
+
+  if (activeCommand === "voice") {
+    const voiceText = noteText.slice(cursor).trim();
+    if (voiceText) sequence.push({ type: "voice", text: voiceText });
+  }
+
+  return sequence;
+}
+
+function stripVoiceCommands(noteText) {
+  return (noteText || "").replace(/\[\d+\s*sec\]/gi, "").replace(/\[voice\]/gi, "");
+}
+
+function cancelVoiceSequence() {
+  voiceSequenceToken++;
+  clearTimeout(voiceTimer);
+  voiceTimer = undefined;
+  speechSynthesis.cancel();
+}
+
+function playVoiceSequence(noteText, token) {
+  const sequence = parseVoiceSequence(noteText);
+  let index = 0;
+
+  const playNext = () => {
+    if (token !== voiceSequenceToken || index >= sequence.length) return;
+
+    const item = sequence[index++];
+    if (item.type === "delay") {
+      voiceTimer = setTimeout(playNext, item.seconds * 1000);
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(item.text);
+    utterance.lang = "zh-TW";
+    utterance.onend = () => {
+      if (token === voiceSequenceToken) playNext();
+    };
+    speechSynthesis.speak(utterance);
+  };
+
+  playNext();
+}
+
+function updateVoiceForState(state) {
+  const currentSlide = state.currentShowPosition;
+  if (currentSlide === voiceSlide) return;
+
+  cancelVoiceSequence();
+  voiceSlide = currentSlide;
+  playVoiceSequence(state.notes, voiceSequenceToken);
+}
+
 function renderState(state) {
   if (!state) return;
 
   slide.textContent = text.slide(state.currentShowPosition, state.slideCount);
-  notes.textContent = state.notes || text.noNotes;
+  notes.textContent = stripVoiceCommands(state.notes) || text.noNotes;
+  updateVoiceForState(state);
   renderPresentations(state);
 }
 
@@ -388,5 +464,5 @@ document.addEventListener("visibilitychange", () => {
 
 applyLanguage();
 setupNotesPreferences();
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=10");
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=11");
 connect();
