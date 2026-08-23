@@ -61,6 +61,7 @@
 - 前端改動：`node --check <file>.js`
 - 所有 PR：本地跑完整驗證後在 PR description 記錄結果
 - 不要為了讓測試過而改測試
+- **新增/修改行 ≤100 chars（超長行檢查）**：`awk '{ if (length($0) > 100) print FILENAME":"FNR" ("length($0)")" }' <改動的檔案>` — 有任何輸出（超 100 chars）必須拆行後才能開 PR（Vivia review 打回項目，已連續打回 #80/#82）
 
 ### .NET build/test 執行規範（George 2026-08-23 明令，違反 = 打回）
 
