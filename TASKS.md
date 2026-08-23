@@ -75,3 +75,10 @@
 - [DONE] 語音解析改為逐行，隱藏 `[voice]` 文字並保留正常 Notes 換行
 - [DONE] 語音速率調整為 1.5，並更新前端／Service Worker 快取版本至 v12
 - [DONE] 執行解析驗算、lint、build、建立 PR 並處理 review comments
+
+## Issue #68 工作追蹤
+- [DONE] 讀取 issue #68、專案規範並同步 `main`
+- [DONE] PowerPoint 選定文件視窗加入 AttachThreadInput／SetForegroundWindow 前景鎖穿透
+- [DONE] 啟用後等待 300ms 驗證實際前景 HWND，失敗最多重試 3 次並回報明確錯誤
+- [DONE] 保留 application.Activate、SendKeys F5 節奏與禁止 COM fallback
+- [DONE] 執行 build、test、git diff --check
