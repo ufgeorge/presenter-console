@@ -93,3 +93,8 @@
 - [DONE] 讀取 issue #72、專案規範並同步 `main`
 - [DONE] PowerPoint 視窗啟用前偵測最小化狀態並以 `ShowWindow(SW_RESTORE)` 還原
 - [DONE] 執行 build、test、`git diff --check`
+
+## Issue #75 工作追蹤
+- [DONE] 讀取 issue #75、專案規範並同步 `main`
+- [DONE] OpenDesign scanner 讀取 daemon `/api/projects` 名稱並保留 fallback
+- [DONE] 執行測試、build、`git diff --check`，建立 PR 並處理 review comments
