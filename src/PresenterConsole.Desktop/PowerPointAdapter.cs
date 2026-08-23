@@ -92,7 +92,16 @@ public sealed class PowerPointAdapter : IPresentationAdapter
     private static extern bool SetForegroundWindow(IntPtr windowHandle);
 
     [DllImport("user32.dll")]
+    private static extern bool IsIconic(IntPtr windowHandle);
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr windowHandle, int command);
+
+    [DllImport("user32.dll")]
     private static extern IntPtr GetForegroundWindow();
+
+    private const int SwRestore = 9;
+    private const int RestoreDelayMilliseconds = 100;
 
     private void SubscribeToApplication(PowerPoint.Application target)
     {
@@ -473,6 +482,12 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         if (windowHandle == IntPtr.Zero)
         {
             return false;
+        }
+
+        if (IsIconic(windowHandle))
+        {
+            ShowWindow(windowHandle, SwRestore);
+            Thread.Sleep(RestoreDelayMilliseconds);
         }
 
         var targetThreadId = GetWindowThreadProcessId(windowHandle, IntPtr.Zero);
