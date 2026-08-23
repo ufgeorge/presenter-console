@@ -122,3 +122,9 @@
 - [DONE] OpenDesign SelectPresentation 與 RefreshActualState 加入診斷 log
 - [DONE] 執行 build、test、`git diff --check` 與行長檢查
 - [DONE] 建立 PR 並處理 review comments（目前無留言）
+
+## Issue #86 工作追蹤
+- [DONE] 讀取 issue #86、專案規範並同步 `main`
+- [DONE] 將 PPT 開始放映改為對文件視窗 PostMessage 送 F5
+- [DONE] 執行 build、test、diff 與行長檢查
+- [DONE] 建立 PR 並處理 review comments（PR #87，目前無留言）
