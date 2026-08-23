@@ -23,7 +23,8 @@ public sealed class AgentServer : IAsyncDisposable
     private readonly SyncEngine sync;
     private readonly SynchronizationContext uiContext;
     private readonly List<WebSocket> sockets = [];
-    private readonly string pairingToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
+    private readonly string pairingToken = Convert.ToHexString(
+        RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
     private readonly DateTimeOffset tokenExpiresAt = DateTimeOffset.UtcNow.AddHours(2);
     private WebApplication? application;
 
@@ -126,11 +127,15 @@ public sealed class AgentServer : IAsyncDisposable
 
                 if (command.Type == CommandType.SyncRequest)
                 {
-                    await SendSafelyAsync(socket, new WireMessage(MessageType.State, State: State()));
+                    await SendSafelyAsync(
+                        socket,
+                        new WireMessage(MessageType.State, State: State()));
                 }
                 else if (command.Type == CommandType.Ping)
                 {
-                    await SendSafelyAsync(socket, new WireMessage(MessageType.Pong, State: State()));
+                    await SendSafelyAsync(
+                        socket,
+                        new WireMessage(MessageType.Pong, State: State()));
                 }
                 else
                 {

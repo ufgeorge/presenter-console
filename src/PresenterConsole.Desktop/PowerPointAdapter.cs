@@ -239,7 +239,9 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             try
             {
                 application.Activate();
-                LogDiagnostic($"StartPresentation attempt={attempt} Activate succeeded; waiting for focus");
+                LogDiagnostic(
+                    $"StartPresentation attempt={attempt} Activate succeeded; "
+                    + "waiting for focus");
                 Thread.Sleep(300);
                 SendKeys.SendWait(key);
                 LogDiagnostic($"StartPresentation attempt={attempt} F5 sent");
@@ -270,7 +272,9 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             }
             catch (InvalidOperationException exception)
             {
-                LogDiagnostic($"StartPresentation attempt={attempt} SendKeys 失敗：{exception.Message}");
+                LogDiagnostic(
+                    $"StartPresentation attempt={attempt} SendKeys 失敗："
+                    + exception.Message);
             }
         }
 
@@ -431,7 +435,10 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         try
         {
             var logPath = Path.Combine(AppContext.BaseDirectory, "presenter-console.log");
-            File.AppendAllText(logPath, $"[{DateTime.Now:O}] PowerPoint adapter diagnostic: {message}{Environment.NewLine}");
+            var logMessage = $"[{DateTime.Now:O}] PowerPoint adapter diagnostic: "
+                + message
+                + Environment.NewLine;
+            File.AppendAllText(logPath, logMessage);
         }
         catch (IOException)
         {
@@ -482,7 +489,9 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         try
         {
             var logPath = Path.Combine(AppContext.BaseDirectory, "presenter-console.log");
-            var message = $"[{DateTime.Now:O}] PowerPoint adapter COM failure: {exception.GetType().FullName}: {exception.Message}{Environment.NewLine}";
+            var message = $"[{DateTime.Now:O}] PowerPoint adapter COM failure: "
+                + $"{exception.GetType().FullName}: {exception.Message}"
+                + Environment.NewLine;
             File.AppendAllText(logPath, message);
         }
         catch (IOException)

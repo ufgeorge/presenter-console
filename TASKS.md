@@ -38,6 +38,8 @@
 - [x] Complete PWA recovery, Wake Lock, icons, and cache update
 - [x] Reformat source files
 - [x] Run build/test/lint and update PR
+- [x] Issue #40：OpenDesign scanner、notes parser、鍵盤換頁、CDP current slide 與啟動模式整合
 
 ## BLOCKED
 - Real PowerPoint/phone 200-run acceptance requires Windows Office hardware.
+- Issue #40 OpenDesign app + deck 實機換頁與 CDP 連線需 George 在實機驗證。
