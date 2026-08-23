@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using PowerPoint = Microsoft.Office.Interop.PowerPoint;
+using PresenterConsole.Contracts;
 
 namespace PresenterConsole.Desktop;
 
@@ -9,15 +10,22 @@ public sealed class PowerPointAdapter : IPresentationAdapter
     private PowerPoint.Application application;
     private readonly SynchronizationContext uiContext;
     private PowerPoint.Presentation? presentation;
+    private readonly Dictionary<string, PowerPoint.Presentation> presentations = new(StringComparer.OrdinalIgnoreCase);
+    private string? selectedPresentationId;
     private int slideCount;
     private string currentNotes = string.Empty;
 
     public event EventHandler? StateChanged;
     public event EventHandler<string>? ErrorOccurred;
+    public event EventHandler? PresentationsChanged;
 
     public int CurrentShowPosition { get; private set; }
     public int SlideCount => slideCount;
     public string CurrentNotes => currentNotes;
+    public IReadOnlyList<PresentationInfo> Presentations => presentations
+        .Select(pair => new PresentationInfo(pair.Key, GetPresentationName(pair.Value), pair.Key))
+        .ToArray();
+    public string? SelectedPresentationId => selectedPresentationId;
 
     public PowerPointAdapter(SynchronizationContext? uiContext = null)
     {
@@ -119,6 +127,9 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             UnsubscribeFromApplication(application);
             application = reconnected;
             SubscribeToApplication(application);
+            presentations.Clear();
+            presentation = null;
+            selectedPresentationId = null;
             AttachOpenPresentations(application);
             LogDiagnostic("PowerPoint RPC 斷線，重新取得 application succeeded");
             return true;
@@ -138,23 +149,91 @@ public sealed class PowerPointAdapter : IPresentationAdapter
     {
         PostToUi(() =>
         {
-            if (ReferenceEquals(presentation, closed))
+            var closedId = GetPresentationId(closed);
+            if (closedId is not null)
             {
-                presentation = null;
-                slideCount = 0;
-                currentNotes = string.Empty;
-                CurrentShowPosition = 0;
+                presentations.Remove(closedId);
             }
 
+            if (ReferenceEquals(presentation, closed)
+                || (closedId is not null && string.Equals(selectedPresentationId, closedId, StringComparison.OrdinalIgnoreCase)))
+            {
+                presentation = presentations.Values.FirstOrDefault();
+                selectedPresentationId = presentation is null ? null : GetPresentationId(presentation);
+                UpdateSelectedPresentationState();
+                RefreshActualState();
+            }
+
+            PresentationsChanged?.Invoke(this, EventArgs.Empty);
             StateChanged?.Invoke(this, EventArgs.Empty);
         });
     }
 
     private void Attach(PowerPoint.Presentation attached)
     {
-        presentation = attached;
-        slideCount = attached.Slides.Count;
+        var id = GetPresentationId(attached);
+        if (id is null)
+        {
+            return;
+        }
+
+        presentations[id] = attached;
+        if (presentation is null || selectedPresentationId is null)
+        {
+            presentation = attached;
+            selectedPresentationId = id;
+            UpdateSelectedPresentationState();
+        }
+
+        PresentationsChanged?.Invoke(this, EventArgs.Empty);
         RefreshActualState();
+    }
+
+    public bool SelectPresentation(string presentationId)
+    {
+        if (!presentations.TryGetValue(presentationId, out var selected))
+        {
+            ErrorOccurred?.Invoke(this, "找不到選定的簡報，請重新整理清單");
+            return false;
+        }
+
+        presentation = selected;
+        selectedPresentationId = presentationId;
+        UpdateSelectedPresentationState();
+        PresentationsChanged?.Invoke(this, EventArgs.Empty);
+        StateChanged?.Invoke(this, EventArgs.Empty);
+        return true;
+    }
+
+    private void UpdateSelectedPresentationState()
+    {
+        try
+        {
+            slideCount = presentation?.Slides.Count ?? 0;
+        }
+        catch (COMException exception)
+        {
+            ReportComFailure("選取簡報", exception);
+            slideCount = 0;
+        }
+    }
+
+    private static string? GetPresentationId(PowerPoint.Presentation target)
+    {
+        try
+        {
+            return string.IsNullOrWhiteSpace(target.FullName) ? target.Name : target.FullName;
+        }
+        catch (COMException)
+        {
+            return null;
+        }
+    }
+
+    private static string GetPresentationName(PowerPoint.Presentation target)
+    {
+        try { return target.Name; }
+        catch (COMException) { return "（無法讀取檔名）"; }
     }
 
     private void OnSlideShowNextSlide(PowerPoint.SlideShowWindow window)
@@ -163,6 +242,11 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         {
             try
             {
+                if (!IsSelectedPresentation(window.Presentation))
+                {
+                    return;
+                }
+
                 CurrentShowPosition = window.View.CurrentShowPosition;
                 currentNotes = ReadNotes(CurrentShowPosition);
                 StateChanged?.Invoke(this, EventArgs.Empty);
@@ -184,13 +268,20 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         LogDiagnostic("SlideShowEnd 觸發");
         PostToUi(() =>
         {
-            if (ReferenceEquals(presentation, endedPresentation))
+            if (IsSelectedPresentation(endedPresentation))
             {
                 CurrentShowPosition = 0;
                 currentNotes = string.Empty;
                 StateChanged?.Invoke(this, EventArgs.Empty);
             }
         });
+    }
+
+    private bool IsSelectedPresentation(PowerPoint.Presentation target)
+    {
+        var targetId = GetPresentationId(target);
+        return targetId is not null
+            && string.Equals(targetId, selectedPresentationId, StringComparison.OrdinalIgnoreCase);
     }
     public void Next() => InvokeView("Next", view => view.Next());
     public void Previous() => InvokeView("Previous", view => view.Previous());
@@ -207,7 +298,7 @@ public sealed class PowerPointAdapter : IPresentationAdapter
     {
         try
         {
-            application.Activate();
+            ActivateSelectedPresentationWindow();
             if (presentation?.SlideShowWindow is { } window)
             {
                 // SlideShowWindow is owned by PowerPoint's running show. Do not
@@ -239,7 +330,11 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         {
             try
             {
-                application.Activate();
+                if (!ActivateSelectedPresentationWindow())
+                {
+                    ErrorOccurred?.Invoke(this, "找不到選定簡報的文件視窗，請先開啟該簡報");
+                    return;
+                }
                 LogDiagnostic(
                     $"StartPresentation attempt={attempt} Activate succeeded; "
                     + "waiting for focus");
@@ -294,6 +389,39 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             LogComException(exception);
             return false;
         }
+    }
+
+    private bool ActivateSelectedPresentationWindow()
+    {
+        if (presentation is null)
+        {
+            return false;
+        }
+
+        var selectedId = selectedPresentationId;
+        if (selectedId is null)
+        {
+            return false;
+        }
+
+        foreach (PowerPoint.DocumentWindow window in application.Windows)
+        {
+            try
+            {
+                var windowPresentation = window.Presentation;
+                if (string.Equals(GetPresentationId(windowPresentation), selectedId, StringComparison.OrdinalIgnoreCase))
+                {
+                    window.Activate();
+                    return true;
+                }
+            }
+            catch (COMException exception)
+            {
+                LogComException(exception);
+            }
+        }
+
+        return false;
     }
 
     private void InvokeView(string operation, Action<dynamic> action)

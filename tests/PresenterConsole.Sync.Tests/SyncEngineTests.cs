@@ -38,12 +38,13 @@ public sealed class SyncEngineTests
         };
         var message = new WireMessage(
             MessageType.Command,
-            new AgentCommand("abc123", 1, CommandType.Previous));
+            new AgentCommand("abc123", 1, CommandType.SelectPresentation, PresentationId: "C:\\Talk.pptx"));
 
         var json = JsonSerializer.Serialize(message, options);
         var roundTrip = JsonSerializer.Deserialize<WireMessage>(json, options);
 
-        Assert.Equal(CommandType.Previous, roundTrip?.Command?.Type);
+        Assert.Equal(CommandType.SelectPresentation, roundTrip?.Command?.Type);
+        Assert.Equal("C:\\Talk.pptx", roundTrip?.Command?.PresentationId);
         Assert.Contains("commandId", json);
     }
 }
