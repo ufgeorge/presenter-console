@@ -8,7 +8,7 @@ const CommandType = {
   StartPresentation: 6,
   StartPresentationFromCurrent: 7
 };
-const APP_VERSION = "v8";
+const APP_VERSION = "v9";
 
 const LANGUAGES = {
   "zh-TW": {
@@ -141,6 +141,8 @@ let heartbeatTimer;
 let wakeLock;
 let noSleep;
 let wakeFallbackPending = false;
+let wakeWarningTimer;
+let wakeWarningHideTimer;
 
 function applyLanguage() {
   const language = getLanguage();
@@ -186,17 +188,37 @@ function setupNotesPreferences() {
 function setWakeLockWarning(visible, fallbackPending = false) {
   wakeWarningToggle.hidden = !visible;
   if (!visible) {
+    clearTimeout(wakeWarningTimer);
+    clearTimeout(wakeWarningHideTimer);
     wakeWarning.hidden = true;
+    wakeWarning.classList.remove("is-visible");
     wakeWarningToggle.setAttribute("aria-expanded", "false");
+  } else {
+    showWakeWarningToast();
   }
   wakeFallbackPending = fallbackPending;
 }
 
+function showWakeWarningToast() {
+  clearTimeout(wakeWarningTimer);
+  clearTimeout(wakeWarningHideTimer);
+  wakeWarning.hidden = false;
+  requestAnimationFrame(() => wakeWarning.classList.add("is-visible"));
+  wakeWarningToggle.setAttribute("aria-expanded", "true");
+  wakeWarningToggle.setAttribute("aria-label", text.wakeWarningCollapse);
+  wakeWarningTimer = setTimeout(hideWakeWarningToast, 3500);
+}
+
+function hideWakeWarningToast() {
+  clearTimeout(wakeWarningTimer);
+  wakeWarning.classList.remove("is-visible");
+  wakeWarningToggle.setAttribute("aria-expanded", "false");
+  wakeWarningToggle.setAttribute("aria-label", text.wakeWarningExpand);
+  wakeWarningHideTimer = setTimeout(() => { wakeWarning.hidden = true; }, 180);
+}
+
 function toggleWakeWarning() {
-  const expanded = wakeWarningToggle.getAttribute("aria-expanded") === "true";
-  wakeWarning.hidden = expanded;
-  wakeWarningToggle.setAttribute("aria-expanded", String(!expanded));
-  wakeWarningToggle.setAttribute("aria-label", expanded ? text.wakeWarningExpand : text.wakeWarningCollapse);
+  showWakeWarningToast();
 }
 
 async function acquireWakeLock() {
@@ -325,8 +347,8 @@ document.querySelector("#start-current").onclick = () => sendCommand(CommandType
 wakeWarningToggle.onclick = toggleWakeWarning;
 wakeRetry.onclick = acquireNoSleepFallback;
 
-document.addEventListener("click", () => {
-  if (wakeFallbackPending) acquireNoSleepFallback();
+document.addEventListener("click", event => {
+  if (wakeFallbackPending && !event.target.closest?.("#wake-warning, #wake-warning-toggle")) acquireNoSleepFallback();
 }, { capture: true });
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") acquireWakeLock();
@@ -334,5 +356,5 @@ document.addEventListener("visibilitychange", () => {
 
 applyLanguage();
 setupNotesPreferences();
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=8");
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=9");
 connect();
