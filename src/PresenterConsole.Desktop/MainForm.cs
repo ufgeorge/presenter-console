@@ -78,6 +78,7 @@ public sealed class MainForm : Form
         PopulateAdapterChoices();
         SelectCurrentAdapter();
         SubscribeToPresentation(presentation);
+        adapterChoice.SelectedIndexChanged += OnAdapterChoiceChanged;
         applyAdapter.Click += OnApplyAdapter;
         configureOpenDesign.Click += OnConfigureOpenDesign;
         Load += OnLoadAsync;
@@ -96,8 +97,6 @@ public sealed class MainForm : Form
         adapterChoice.Items.Clear();
         adapterChoice.Items.Add("PowerPoint（COM 可用）");
         adapterChoice.Items.Add("OpenDesign");
-
-        configureOpenDesign.Enabled = adapterChoice.Items.Contains("OpenDesign");
     }
 
     private void SelectCurrentAdapter()
@@ -106,6 +105,20 @@ public sealed class MainForm : Form
             ? "OpenDesign"
             : "PowerPoint（COM 可用）";
         adapterChoice.SelectedItem = current;
+        UpdateOpenDesignButtonVisibility();
+    }
+
+    private void OnAdapterChoiceChanged(object? sender, EventArgs e)
+    {
+        UpdateOpenDesignButtonVisibility();
+    }
+
+    private void UpdateOpenDesignButtonVisibility()
+    {
+        configureOpenDesign.Visible = string.Equals(
+            adapterChoice.SelectedItem as string,
+            "OpenDesign",
+            StringComparison.Ordinal);
     }
 
     private void OnApplyAdapter(object? sender, EventArgs e)
