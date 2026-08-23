@@ -299,7 +299,7 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         try
         {
             ActivateSelectedPresentationWindow();
-            if (presentation?.SlideShowWindow is { } window)
+            if (TryGetSlideShowWindow() is { } window)
             {
                 // SlideShowWindow is owned by PowerPoint's running show. Do not
                 // FinalRelease it at the end of this operation.
@@ -380,15 +380,7 @@ public sealed class PowerPointAdapter : IPresentationAdapter
     }
     private bool IsSlideShowWindowAlive()
     {
-        try
-        {
-            return presentation?.SlideShowWindow is not null;
-        }
-        catch (COMException exception)
-        {
-            LogComException(exception);
-            return false;
-        }
+        return TryGetSlideShowWindow() is not null;
     }
 
     private bool ActivateSelectedPresentationWindow()
@@ -404,6 +396,7 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             return false;
         }
 
+        application.Activate();
         foreach (PowerPoint.DocumentWindow window in application.Windows)
         {
             try
@@ -428,7 +421,7 @@ public sealed class PowerPointAdapter : IPresentationAdapter
     {
         try
         {
-            if (presentation?.SlideShowWindow is not { } window)
+            if (TryGetSlideShowWindow() is not { } window)
             {
                 LogDiagnostic("未在放映模式，命令被忽略");
                 return;
@@ -453,7 +446,7 @@ public sealed class PowerPointAdapter : IPresentationAdapter
     {
         try
         {
-            if (presentation?.SlideShowWindow is not { } window)
+            if (TryGetSlideShowWindow() is not { } window)
             {
                 CurrentShowPosition = 0;
                 currentNotes = string.Empty;
@@ -472,6 +465,21 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             ReportComFailure("RefreshActualState", exception);
         }
     }
+
+    private PowerPoint.SlideShowWindow? TryGetSlideShowWindow()
+    {
+        try
+        {
+            return presentation?.SlideShowWindow;
+        }
+        catch (COMException exception) when (IsNoSlideShowView(exception))
+        {
+            return null;
+        }
+    }
+
+    private static bool IsNoSlideShowView(COMException exception) =>
+        exception.Message.Contains("There is currently no slide show view", StringComparison.OrdinalIgnoreCase);
 
     private string ReadNotes(int position)
     {
