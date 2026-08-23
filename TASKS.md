@@ -8,6 +8,7 @@
 - [x] Issue #20：修復 COMReferenceTracker 釋放放映視窗導致開始簡報立即結束
 
 ## IN PROGRESS
+- [x] Issue #64：每頁語音只播一次、過濾語音命令空行並更新 PWA 快取版本
 - [x] Issue #34：限制 Notes 版面高度、確保控制按鈕可見並更新 PWA 快取版本
 - [x] Issue #30：手機 Notes 與換頁控制響應式版面、字級/字色設定
 - [x] Issue #9：實作與驗證
@@ -21,6 +22,7 @@
 - [x] Issue #12：LAN HTTP Wake Lock 的 NoSleep fallback 與自動鎖定指引
 
 ## DONE
+- [x] Issue #64：實作與驗證（待 PR review）
 - [x] Issue #38：Wake 警告改為暫時性 toast、修復 icon 閃爍並更新 PWA 快取版本
 - [x] Issue #36：修復 Wake 警告區塊的 CSS display 覆蓋 hidden
 - [x] Issue #32：Wake 警告收合、Speaker Notes 換行正規化與移除頁碼
