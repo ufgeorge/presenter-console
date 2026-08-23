@@ -128,3 +128,10 @@
 - [DONE] 將 PPT 開始放映改為對文件視窗 PostMessage 送 F5
 - [DONE] 執行 build、test、diff 與行長檢查
 - [DONE] 建立 PR 並處理 review comments（PR #87，目前無留言）
+
+## Issue #89 工作追蹤
+- [DONE] 讀取 issue #89 規格並同步 `main`
+- [DONE] OpenDesign 優先解析 `script#speaker-notes` JSON，aside 保留 fallback
+- [DONE] 同步以 JSON notes array 長度計算 PageCount
+- [DONE] 新增 JSON、缺少 script、損壞 JSON 的 parser 回歸測試
+- [DONE] 執行 build、test、diff 與行長檢查
