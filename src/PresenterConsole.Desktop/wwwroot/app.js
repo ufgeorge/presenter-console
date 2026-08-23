@@ -31,6 +31,9 @@ const LANGUAGES = {
     ios: "iPhone/iPad：設定 → 螢幕顯示與亮度 → 自動鎖定 → 永不",
     android: "Android：設定 → 顯示 → 螢幕逾時／休眠 → 選擇較長時間",
     retryWake: "重新啟用",
+    voiceTitle: "⚠ 手機未安裝中文語音",
+    voiceText: "語音備註無法播報，請在手機設定中安裝中文語音。",
+    voiceDismiss: "關閉提示",
     start: "▶ 開始簡報",
     startCurrent: "從目前頁開始",
     back: "↩ 回簡報",
@@ -68,6 +71,9 @@ const LANGUAGES = {
     ios: "iPhone/iPad：设置 → 显示与亮度 → 自动锁定 → 永不",
     android: "Android：设置 → 显示 → 屏幕超时／休眠 → 选择较长时间",
     retryWake: "重新启用",
+    voiceTitle: "⚠ 手机未安装中文语音",
+    voiceText: "语音备注无法播报，请在手机设置中安装中文语音。",
+    voiceDismiss: "关闭提示",
     start: "▶ 开始演示",
     startCurrent: "从当前页开始",
     back: "↩ 返回演示",
@@ -105,6 +111,9 @@ const LANGUAGES = {
     ios: "iPhone/iPad: Settings → Display & Brightness → Auto-Lock → Never",
     android: "Android: Settings → Display → Screen timeout / Sleep → choose a longer time",
     retryWake: "Re-enable",
+    voiceTitle: "⚠ No Chinese voice installed",
+    voiceText: "Voice notes cannot be spoken. Install a Chinese voice in phone settings.",
+    voiceDismiss: "Dismiss",
     start: "▶ Start presentation",
     startCurrent: "Start from current slide",
     back: "↩ Return to presentation",
@@ -142,6 +151,8 @@ const notes = document.querySelector("#notes");
 const wakeWarning = document.querySelector("#wake-warning");
 const wakeWarningToggle = document.querySelector("#wake-warning-toggle");
 const wakeRetry = document.querySelector("#wake-retry");
+const voiceWarning = document.querySelector("#voice-warning");
+const voiceDismiss = document.querySelector("#voice-dismiss");
 const presentationSelect = document.querySelector("#presentation-select");
 let socket;
 let sequence = 0;
@@ -154,6 +165,9 @@ let wakeWarningHideTimer;
 let voiceSequenceToken = 0;
 let voiceTimer;
 const playedVoiceSlides = new Set();
+let voiceAvailable;
+let voiceWarningDismissed = false;
+let latestState;
 
 function applyLanguage() {
   const language = getLanguage();
@@ -308,7 +322,35 @@ function cancelVoiceSequence() {
   speechSynthesis.cancel();
 }
 
+function setVoiceWarning(visible) {
+  if (voiceWarningDismissed && visible) return;
+  voiceWarning.hidden = !visible;
+  voiceWarning.classList.toggle("is-visible", visible);
+}
+
+function updateVoiceAvailability() {
+  if (!("speechSynthesis" in window)) {
+    voiceAvailable = false;
+    setVoiceWarning(true);
+    return;
+  }
+
+  const voices = speechSynthesis.getVoices();
+  if (!voices.length) return;
+
+  voiceAvailable = voices.some(voice => voice.lang.toLowerCase().startsWith("zh"));
+  setVoiceWarning(!voiceAvailable);
+  if (voiceAvailable && latestState) updateVoiceForState(latestState);
+}
+
+function setupVoiceAvailability() {
+  if (!("speechSynthesis" in window)) return updateVoiceAvailability();
+  speechSynthesis.addEventListener("voiceschanged", updateVoiceAvailability);
+  updateVoiceAvailability();
+}
+
 function playVoiceSequence(noteText, token) {
+  if (voiceAvailable !== true) return;
   const sequence = parseVoiceSequence(noteText);
   let index = 0;
 
@@ -327,6 +369,7 @@ function playVoiceSequence(noteText, token) {
     utterance.onend = () => {
       if (token === voiceSequenceToken) playNext();
     };
+    speechSynthesis.resume();
     speechSynthesis.speak(utterance);
   };
 
@@ -334,6 +377,8 @@ function playVoiceSequence(noteText, token) {
 }
 
 function updateVoiceForState(state) {
+  latestState = state;
+  if (voiceAvailable !== true) return;
   const currentSlide = state.currentShowPosition;
   if (playedVoiceSlides.has(currentSlide)) return;
 
@@ -478,5 +523,10 @@ document.addEventListener("visibilitychange", () => {
 
 applyLanguage();
 setupNotesPreferences();
+voiceDismiss.onclick = () => {
+  voiceWarningDismissed = true;
+  setVoiceWarning(false);
+};
+setupVoiceAvailability();
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=14");
 connect();

@@ -7,6 +7,12 @@
 <body><main>
   <header class="status-bar"><div class="status-summary"><p id="status" data-i18n="connecting">連線中…</p><button id="wake-warning-toggle" class="warning-icon" type="button" data-i18n-aria="wakeWarningExpand" aria-label="展開螢幕鎖定警告" aria-expanded="false" hidden>⚠️</button></div><h1 id="slide">—</h1></header>
   <section id="wake-warning" class="warning" role="status" aria-live="polite" hidden><div><strong data-i18n="wakeTitle">⚠ 螢幕可能會自動鎖定</strong><p data-i18n="wakeText"></p><details><summary data-i18n="wakeSettings">查看設定路徑</summary><ul><li data-i18n="ios"></li><li data-i18n="android"></li></ul></details></div><button id="wake-retry" type="button" data-i18n="retryWake">重新啟用</button></section>
+  <section id="voice-warning" class="warning" role="status" aria-live="polite" hidden>
+    <div><strong data-i18n="voiceTitle">⚠ 手機未安裝中文語音</strong>
+      <p data-i18n="voiceText"></p>
+    </div>
+    <button id="voice-dismiss" type="button" data-i18n="voiceDismiss">關閉提示</button>
+  </section>
   <section class="primary-area" aria-label="Speaker notes and page controls">
     <section class="notes-panel">
       <div class="notes-toolbar" aria-label="Notes display controls">
