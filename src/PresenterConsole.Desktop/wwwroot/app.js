@@ -9,7 +9,7 @@ const CommandType = {
   StartPresentationFromCurrent: 7,
   SelectPresentation: 8
 };
-const APP_VERSION = "v12";
+const APP_VERSION = "v13";
 
 const LANGUAGES = {
   "zh-TW": {
@@ -153,7 +153,7 @@ let wakeWarningTimer;
 let wakeWarningHideTimer;
 let voiceSequenceToken = 0;
 let voiceTimer;
-let voiceSlide;
+const playedVoiceSlides = new Set();
 
 function applyLanguage() {
   const language = getLanguage();
@@ -297,6 +297,7 @@ function stripVoiceCommands(noteText) {
   return (noteText || "")
     .split("\n")
     .map(line => line.replace(/\[voice\][^\[\]\n]*/gi, "").replace(/\[\d+\s*sec\]/gi, "").trim())
+    .filter(line => line !== "")
     .join("\n");
 }
 
@@ -334,10 +335,10 @@ function playVoiceSequence(noteText, token) {
 
 function updateVoiceForState(state) {
   const currentSlide = state.currentShowPosition;
-  if (currentSlide === voiceSlide) return;
+  if (playedVoiceSlides.has(currentSlide)) return;
 
   cancelVoiceSequence();
-  voiceSlide = currentSlide;
+  playedVoiceSlides.add(currentSlide);
   playVoiceSequence(state.notes, voiceSequenceToken);
 }
 
@@ -472,5 +473,5 @@ document.addEventListener("visibilitychange", () => {
 
 applyLanguage();
 setupNotesPreferences();
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=12");
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=13");
 connect();
