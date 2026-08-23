@@ -23,8 +23,7 @@ public sealed class AgentServer : IAsyncDisposable
     private readonly SyncEngine sync;
     private readonly SynchronizationContext uiContext;
     private readonly List<WebSocket> sockets = [];
-    private readonly List<AudienceQuestion> questions = [];
-    private readonly Dictionary<IPAddress, DateTimeOffset> lastQuestionByAddress = [];
+    private readonly AudienceQuestionStore questionStore = new();
     private readonly string pairingToken = Convert.ToHexString(
         RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
     private readonly DateTimeOffset tokenExpiresAt = DateTimeOffset.UtcNow.AddHours(2);
@@ -60,10 +59,7 @@ public sealed class AgentServer : IAsyncDisposable
     {
         get
         {
-            lock (questions)
-            {
-                return questions.OrderBy(question => question.CreatedAt).ToArray();
-            }
+            return questionStore.Questions;
         }
     }
 
@@ -122,7 +118,8 @@ public sealed class AgentServer : IAsyncDisposable
                 case CommandType.StartPresentationFromCurrent:
                     presentation.StartPresentation(fromCurrentSlide: true);
                     break;
-                case CommandType.SelectPresentation when command.PresentationId is { } presentationId:
+                case CommandType.SelectPresentation
+                    when command.PresentationId is { } presentationId:
                     if (!presentation.SelectPresentation(presentationId))
                     {
                         BroadcastError("找不到選定的簡報，請重新整理清單");
@@ -242,31 +239,15 @@ public sealed class AgentServer : IAsyncDisposable
         }
 
         var address = context.Connection.RemoteIpAddress ?? IPAddress.None;
-        var rateLimited = false;
-        lock (lastQuestionByAddress)
+        if (!questionStore.TryAdd(
+                text, address, DateTimeOffset.UtcNow, out var question,
+                out var error, out var rateLimited))
         {
-            if (lastQuestionByAddress.TryGetValue(address, out var last)
-                && DateTimeOffset.UtcNow - last < TimeSpan.FromSeconds(10))
-            {
-                rateLimited = true;
-            }
-            else
-            {
-                lastQuestionByAddress[address] = DateTimeOffset.UtcNow;
-            }
-        }
-        if (rateLimited)
-        {
-            await WriteJsonErrorAsync(context, StatusCodes.Status429TooManyRequests,
-                "請稍候 10 秒再提問");
+            var statusCode = rateLimited
+                ? StatusCodes.Status429TooManyRequests
+                : StatusCodes.Status400BadRequest;
+            await WriteJsonErrorAsync(context, statusCode, error);
             return;
-        }
-
-        var question = new AudienceQuestion(
-            Guid.NewGuid().ToString(), text, DateTime.UtcNow);
-        lock (questions)
-        {
-            questions.Add(question);
         }
 
         QuestionsChanged?.Invoke(this, EventArgs.Empty);
@@ -283,13 +264,7 @@ public sealed class AgentServer : IAsyncDisposable
 
     private void DeleteQuestion(string questionId)
     {
-        var removed = false;
-        lock (questions)
-        {
-            removed = questions.RemoveAll(question => question.Id == questionId) > 0;
-        }
-
-        if (removed)
+        if (questionStore.Remove(questionId))
         {
             QuestionsChanged?.Invoke(this, EventArgs.Empty);
             BroadcastQuestions();

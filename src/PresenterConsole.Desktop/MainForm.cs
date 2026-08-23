@@ -449,6 +449,7 @@ public sealed class MainForm : Form
         {
             Text = "觀眾提問 QR";
             WindowState = FormWindowState.Maximized;
+            TopMost = true;
             BackColor = Color.White;
 
             var title = new Label
