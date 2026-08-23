@@ -9,7 +9,7 @@ const CommandType = {
   StartPresentationFromCurrent: 7,
   SelectPresentation: 8
 };
-const APP_VERSION = "v13";
+const APP_VERSION = "v14";
 
 const LANGUAGES = {
   "zh-TW": {
@@ -142,7 +142,7 @@ const notes = document.querySelector("#notes");
 const wakeWarning = document.querySelector("#wake-warning");
 const wakeWarningToggle = document.querySelector("#wake-warning-toggle");
 const wakeRetry = document.querySelector("#wake-retry");
-const presentationList = document.querySelector("#presentation-list");
+const presentationSelect = document.querySelector("#presentation-select");
 let socket;
 let sequence = 0;
 let heartbeatTimer;
@@ -352,25 +352,30 @@ function renderState(state) {
 }
 
 function renderPresentations(state) {
-  presentationList.replaceChildren();
+  presentationSelect.replaceChildren();
   const presentations = state.presentations || [];
   if (!presentations.length) {
-    const empty = document.createElement("p");
+    const empty = document.createElement("option");
+    empty.disabled = true;
+    empty.selected = true;
     empty.textContent = text.noPresentations;
-    presentationList.append(empty);
+    presentationSelect.append(empty);
     return;
   }
 
   for (const item of presentations) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "presentation-option";
-    button.textContent = item.name || item.fullName;
-    button.title = item.fullName;
-    button.setAttribute("aria-pressed", String(item.id === state.selectedPresentationId));
-    button.onclick = () => sendCommand(CommandType.SelectPresentation, null, item.id);
-    presentationList.append(button);
+    const option = document.createElement("option");
+    option.value = item.id;
+    option.textContent = item.name || item.fullName;
+    option.selected = item.id === state.selectedPresentationId;
+    presentationSelect.append(option);
   }
+
+  presentationSelect.onchange = () => {
+    if (presentationSelect.value !== String(state.selectedPresentationId)) {
+      sendCommand(CommandType.SelectPresentation, null, presentationSelect.value);
+    }
+  };
 }
 
 function createCommandId() {
@@ -473,5 +478,5 @@ document.addEventListener("visibilitychange", () => {
 
 applyLanguage();
 setupNotesPreferences();
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=13");
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=14");
 connect();
