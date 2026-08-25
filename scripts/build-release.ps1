@@ -48,3 +48,17 @@ if ($missingAssemblies) {
 
 Write-Host "發布驗證通過：$($requiredAssemblies -join ', ')"
 Write-Host "發布完成：$publishPath\PresenterConsole.Desktop.exe"
+
+# ── 打包 zip（GitHub Releases 用）──
+[xml]$csprojXml = Get-Content $projectPath
+$version = $csprojXml.Project.PropertyGroup.Version
+if (-not $version) { $version = '0.0.0' }
+
+$zipPath = Join-Path $repositoryRoot "presenter-console-$version-win-x64.zip"
+if (Test-Path $zipPath) { Remove-Item -Force -Path $zipPath }
+Compress-Archive -Path (Join-Path $publishPath '*') -DestinationPath $zipPath -Force
+
+Write-Host "壓縮包：$zipPath"
+Write-Host ""
+Write-Host '上傳到 GitHub Releases（測試者下載用）：'
+Write-Host "  gh release upload v$version `"$zipPath`""
