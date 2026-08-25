@@ -36,7 +36,7 @@
 3. Windows SmartScreen 若出现「Windows 已保护您的电脑」→ **更多信息 → 仍要运行**（未签名的个人项目，属正常）
 4. 首次运行 Windows 防火墙询问 → 勾选**专用网络**并允许
 
-> 📖 完整使用手册（安装、界面说明、语音备注、观众提问、FAQ）：[docs/user-guide.md](docs/user-guide.md)（目前为繁体中文，zip 内亦附 `UserGuide.md`）
+> 📖 完整使用手册（连接、界面说明、语音备注、观众提问、FAQ）见下方「[使用手册](#使用手册)」，zip 内亦附 `README.md`（目前为繁体中文）
 
 ## 快速开始
 

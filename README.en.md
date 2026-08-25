@@ -36,7 +36,7 @@ Turn your phone into a presenter's console: slide navigation, start/back-to-pres
 3. If Windows SmartScreen shows "Windows protected your PC" → **More info → Run anyway** (expected for an unsigned personal project)
 4. When Windows Firewall asks on first run → tick **Private networks** and allow
 
-> 📖 Full user guide (installation, UI reference, voice notes, audience Q&A, FAQ): [docs/user-guide.md](docs/user-guide.md) (Traditional Chinese for now; a copy `UserGuide.md` ships inside the zip)
+> 📖 Full user guide (connection, UI reference, voice notes, audience Q&A, FAQ) is in the [User Guide](#user-guide) section below; a copy of `README.md` ships inside the zip (Traditional Chinese for now)
 
 ## Quick Start
 
