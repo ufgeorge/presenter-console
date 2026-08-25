@@ -77,6 +77,20 @@ docs/                             MVP spec, manual testing guide
 - **Command idempotency**: every command carries command_id + sequence; network retries never skip slides
 - **Recovery**: full state is restored automatically on reconnect; one tap returns to the presentation from any state
 
+## Third-Party Components & Credits
+
+**Runtime dependencies**
+- [QRCoder](https://github.com/codebude/QRCoder) (MIT) — QR code generation
+- [NoSleep.js](https://github.com/richtr/NoSleep.js) (MIT) — keep-screen-awake fallback
+- Microsoft.Data.Sqlite (MIT) — Open Design project name lookup
+- Microsoft Office Interop Assemblies (Microsoft official) — PowerPoint control
+
+**Design references (no code copied)**
+- [DeckTap](https://github.com/Rico00121/DeckTap) (MIT) — LAN-first + QR pairing architecture concept
+- [PPT-Remote-control](https://github.com/PuZhiweizuishuai/PPT-Remote-control) (GPL-3.0) — PowerPoint COM control architecture reference
+- [PhoneAsPrompter](https://github.com/yangzhongke/PhoneAsPrompter) (GPL-3.0) — COM object lifetime management reference
+- [mobslide](https://github.com/thewh1teagle/mobslide) (no license) — mobile UX concepts
+
 ## License
 
-Not specified (see repo).
+[MIT License](LICENSE)

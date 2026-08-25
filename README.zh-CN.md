@@ -77,6 +77,20 @@ docs/                             MVP 规格、实机测试指引
 - **命令幂等**：每条命令带 command_id + sequence，网络重试不会跳页
 - **Recovery**：断线重连自动恢复完整状态；任何状态下可一键回到简报
 
+## 第三方组件与致谢
+
+**Runtime 依赖**
+- [QRCoder](https://github.com/codebude/QRCoder)（MIT）— QR Code 生成
+- [NoSleep.js](https://github.com/richtr/NoSleep.js)（MIT）— 手机屏幕不休眠 fallback
+- Microsoft.Data.Sqlite（MIT）— Open Design 项目名称读取
+- Microsoft Office Interop Assemblies（微软官方）— PowerPoint 控制
+
+**设计参考（未复制代码）**
+- [DeckTap](https://github.com/Rico00121/DeckTap)（MIT）— LAN-first + QR 配对架构概念
+- [PPT-Remote-control](https://github.com/PuZhiweizuishuai/PPT-Remote-control)（GPL-3.0）— PowerPoint COM 控制架构参考
+- [PhoneAsPrompter](https://github.com/yangzhongke/PhoneAsPrompter)（GPL-3.0）— COM 对象生命周期管理参考
+- [mobslide](https://github.com/thewh1teagle/mobslide)（无授权）— 移动端 UX 概念
+
 ## 授权
 
-未指定（请见 repo 说明）。
+[MIT License](LICENSE)
