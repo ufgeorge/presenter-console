@@ -1,26 +1,59 @@
-# Presenter Console
+# Presenter Console — 手機簡報中控台
 
-Sprint 1：PowerPoint 閉環的 Windows Desktop Agent + 手機 PWA。
+[English](README.en.md) · [简体中文](README.zh-CN.md) · **繁體中文**
 
-開發與建置需要 Windows、.NET 8 SDK；簡報控制功能需要 PowerPoint。
+把手機變成簡報講者的中控台：換頁、開始簡報、同步顯示講者備註、語音備註播報、觀眾提問 — 全部透過手機瀏覽器完成，**手機零安裝 App**。
 
-## 發布
+- 🎯 支援 **PowerPoint** 與 **Open Design** 兩種簡報來源
+- 📱 手機不用裝 App：PWA 網頁、掃 QR Code 即配對
+- 🌐 同一 WiFi / 手機熱點即可使用，不需要雲端伺服器（LAN-first）
+- 🌏 三語介面：繁體中文 / 简体中文 / English
 
-在 Windows 且已安裝 .NET 8 SDK 的環境執行：
+## 功能特色
+
+| 功能 | 說明 |
+|---|---|
+| 換頁控制 | NEXT / PREV、開始簡報、從目前頁開始、一鍵回簡報 |
+| 講者備註同步 | 手機即時顯示目前頁的 Notes（以 Agent 實測頁碼為準） |
+| 語音備註 | Notes 寫 `[voice]文字 [2 sec]` 語法，手機自動 TTS 播報（講者耳機聽，最不干擾） |
+| 多簡報挑選 | 同時開多個 PowerPoint 檔 / Open Design 專案，手機下拉切換 |
+| 觀眾提問（Audience Q&A） | 放映中手機顯示提問 QR Code，觀眾瀏覽器送問題，控制端檢視 / 刪除 |
+| 螢幕不休眠 | Wake Lock（secure context）+ NoSleep.js fallback |
+| 三語介面 | 繁體中文 / 简体中文 / English，隨手機語言自動切換 |
+
+## 系統需求
+
+- **電腦**：Windows 10/11（x64）
+- 控制 **PowerPoint**：需安裝 PowerPoint（Desktop 版，含講者備註）
+- 控制 **Open Design**：需安裝 Open Design（播放由使用者手動開始，手機負責換頁與備註）
+- **手機**：iOS 16.4+（Safari）或 Android（Chrome），與電腦連同一網路
+- **免安裝 .NET Runtime**：發布檔為 self-contained
+
+## 下載與安裝
+
+1. 到 **[Releases](https://github.com/ufgeorge/presenter-console/releases)** 下載最新版 zip
+2. 解壓到任意資料夾，執行 `PresenterConsole.Desktop.exe`
+3. Windows SmartScreen 若出現「Windows 已保護您的電腦」→ **更多資訊 → 仍要執行**（未簽章的個人專案，屬正常）
+4. 首次執行 Windows 防火牆詢問 → 勾選**私人網路**並允許
+
+## 快速開始
+
+1. 電腦用 PowerPoint 開啟簡報（或啟動 Open Design）
+2. 執行 Agent，視窗顯示 **QR Code**
+3. 手機掃 QR → 自動開啟控制頁（PWA）
+4. 電腦開始簡報後，即可用手機換頁、看備註、播語音
+
+> 💡 手機與電腦需在同一 WiFi；現場沒網路時，用手機開**個人熱點**、電腦連上熱點即可。
+
+## 開發者建置
+
+Windows + .NET 8 SDK：
 
 ```powershell
-.\scripts\build-release.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\build-release.ps1
 ```
 
-腳本會以 `win-x64`、Release、self-contained 模式發布到資料夾，產出位置為：
-
-```text
-publish\
-```
-
-請將整個 `publish` 資料夾（包含其中的多個檔案，例如 `Microsoft.Office.Interop.PowerPoint.dll`）複製到目標 Windows 電腦後，執行其中的 `PresenterConsole.Desktop.exe`；目標電腦不需要安裝 .NET SDK 或 .NET Runtime。啟動後會顯示 Agent 視窗與手機配對 QR Code。若要控制 PowerPoint，目標電腦仍需安裝 PowerPoint。
-
-一般開發驗證：
+輸出 `publish\` 資料夾（win-x64、Release、self-contained），**整包複製**到目標電腦執行即可。一般驗證：
 
 ```powershell
 dotnet restore PresenterConsole.sln
@@ -28,4 +61,22 @@ dotnet build PresenterConsole.sln
 dotnet test PresenterConsole.sln
 ```
 
-手機頁碼只採信 Agent 的 CurrentShowPosition；重連透過 SYNC_REQUEST 恢復。真實 200 次驗收仍需具備 PowerPoint 與手機熱點的 Windows 測試環境。
+## 專案結構
+
+```
+src/PresenterConsole.Contracts/   通訊協定（命令 / 狀態 / 訊息型別）
+src/PresenterConsole.Sync/        同步引擎（command_id + sequence、冪等、重連恢復）
+src/PresenterConsole.Desktop/     Windows Agent（WebSocket server、COM 控制、QR、wwwroot 手機前端）
+tests/PresenterConsole.Sync.Tests/ 同步引擎測試
+docs/                             MVP 規格、實機測試指引
+```
+
+## 架構原則
+
+- **PC Agent 是唯一真相來源**：手機顯示的頁碼必須來自 Agent 實測狀態（Observed State），禁止手機端自行推算
+- **命令冪等**：每條命令帶 command_id + sequence，網路重試不會跳頁
+- **Recovery**：斷線重連自動恢復完整狀態；任何狀態下可一鍵回簡報
+
+## 授權
+
+未指定（請見 repo 說明）。
