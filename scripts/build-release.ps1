@@ -56,6 +56,13 @@ if (-not $version) { $version = '0.0.0' }
 
 $zipPath = Join-Path $repositoryRoot "presenter-console-$version-win-x64.zip"
 if (Test-Path $zipPath) { Remove-Item -Force -Path $zipPath }
+
+# 手冊進 zip（測試者解壓即看）
+$userGuide = Join-Path $repositoryRoot 'docs\user-guide.md'
+if (Test-Path $userGuide) {
+    Copy-Item -LiteralPath $userGuide -Destination (Join-Path $publishPath 'UserGuide.md') -Force
+}
+
 Compress-Archive -Path (Join-Path $publishPath '*') -DestinationPath $zipPath -Force
 
 Write-Host "壓縮包：$zipPath"

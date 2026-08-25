@@ -36,6 +36,8 @@
 3. Windows SmartScreen 若出現「Windows 已保護您的電腦」→ **更多資訊 → 仍要執行**（未簽章的個人專案，屬正常）
 4. 首次執行 Windows 防火牆詢問 → 勾選**私人網路**並允許
 
+> 📖 完整使用手冊（安裝、介面說明、語音備註、觀眾提問、FAQ）：[docs/user-guide.md](docs/user-guide.md)（目前為繁體中文，zip 內亦附 `UserGuide.md`）
+
 ## 快速開始
 
 1. 電腦用 PowerPoint 開啟簡報（或啟動 Open Design）

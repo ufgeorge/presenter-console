@@ -36,6 +36,8 @@ Turn your phone into a presenter's console: slide navigation, start/back-to-pres
 3. If Windows SmartScreen shows "Windows protected your PC" → **More info → Run anyway** (expected for an unsigned personal project)
 4. When Windows Firewall asks on first run → tick **Private networks** and allow
 
+> 📖 Full user guide (installation, UI reference, voice notes, audience Q&A, FAQ): [docs/user-guide.md](docs/user-guide.md) (Traditional Chinese for now; a copy `UserGuide.md` ships inside the zip)
+
 ## Quick Start
 
 1. Open a presentation in PowerPoint on the computer (or launch Open Design)
