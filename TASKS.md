@@ -29,6 +29,7 @@
 - [x] Issue #20：修復 COMReferenceTracker 釋放放映視窗導致開始簡報立即結束
 
 ## IN PROGRESS
+- [ ] Issue #111：PowerPoint notes 自動編號與項目符號前綴重建
 - [x] Issue #64：每頁語音只播一次、過濾語音命令空行並更新 PWA 快取版本
 - [x] Issue #34：限制 Notes 版面高度、確保控制按鈕可見並更新 PWA 快取版本
 - [x] Issue #30：手機 Notes 與換頁控制響應式版面、字級/字色設定
