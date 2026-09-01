@@ -110,11 +110,23 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             return;
         }
 
-        var down = PostMessage(videoWindowHandle, WmKeyDown, (IntPtr)0x20, IntPtr.Zero);
-        var up = PostMessage(videoWindowHandle, WmKeyUp, (IntPtr)0x20, IntPtr.Zero);
-        LogDiagnostic($"PauseResumeVideo post-message keydown={down} keyup={up}");
-        if (!down || !up)
+        var focused = BringWindowToForeground(videoWindowHandle);
+        LogDiagnostic($"PauseResumeVideo focus focused={focused} hwnd={videoWindowHandle}");
+        if (!focused)
         {
+            ReportVideoError("無法聚焦影片播放器，請手動點播放器視窗後再按");
+            return;
+        }
+
+        try
+        {
+            Thread.Sleep(300);
+            SendKeys.SendWait("{SPACE}");
+            LogDiagnostic("PauseResumeVideo sendkeys space focused=true");
+        }
+        catch (InvalidOperationException exception)
+        {
+            LogDiagnostic($"PauseResumeVideo sendkeys failed error={exception.Message}");
             ReportVideoError("影片播放器未接受暫停/繼續操作");
         }
     }

@@ -230,19 +230,23 @@ public sealed class OpenDesignAdapter : IPresentationAdapter
             return;
         }
 
-        var down = PostMessage(
-            videoWindowHandle,
-            WmKeyDown,
-            new UIntPtr(VkSpace),
-            IntPtr.Zero);
-        var up = PostMessage(
-            videoWindowHandle,
-            WmKeyUp,
-            new UIntPtr(VkSpace),
-            IntPtr.Zero);
-        LogDiagnostic($"PauseResumeVideo post-message keydown={down} keyup={up}");
-        if (!down || !up)
+        var focused = BringWindowToForeground(videoWindowHandle);
+        LogDiagnostic($"PauseResumeVideo focus focused={focused} hwnd={videoWindowHandle}");
+        if (!focused)
         {
+            ReportError("無法聚焦影片播放器，請手動點播放器視窗後再按");
+            return;
+        }
+
+        try
+        {
+            Thread.Sleep(300);
+            SendKeys.SendWait("{SPACE}");
+            LogDiagnostic("PauseResumeVideo sendkeys space focused=true");
+        }
+        catch (InvalidOperationException exception)
+        {
+            LogDiagnostic($"PauseResumeVideo sendkeys failed error={exception.Message}");
             ReportError("影片播放器未接受暫停/繼續操作");
         }
     }
@@ -550,9 +554,6 @@ public sealed class OpenDesignAdapter : IPresentationAdapter
     private const int SwRestore = 9;
     private const uint KeyEventKeyUp = 0x0002;
     private const byte VkShift = 0x10;
-    private const byte VkSpace = 0x20;
-    private const uint WmKeyDown = 0x0100;
-    private const uint WmKeyUp = 0x0101;
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -565,11 +566,6 @@ public sealed class OpenDesignAdapter : IPresentationAdapter
     [DllImport("user32.dll")]
     private static extern void keybd_event(
         byte virtualKey, byte scanCode, uint flags, UIntPtr extraInfo);
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool PostMessage(
-        IntPtr windowHandle, uint message, UIntPtr wParam, IntPtr lParam);
 
     [DllImport("user32.dll")]
     private static extern uint GetWindowThreadProcessId(
