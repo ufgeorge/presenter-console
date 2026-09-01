@@ -5,7 +5,7 @@
 - [DONE] 實作影片協定、OpenDesign 偵測/播放/暫停與手機 UI
 - [DONE] 新增 `ReadVideos` 五項測試
 - [DONE] 執行 build、test、node check、靜態版面與行長驗證
-- [TODO] 建立 PR、處理 review comments，最後切回 main
+- [DONE] 建立 PR #100、讀取 review comments（目前無留言），最後切回 main
 
 ## Issue #93 工作追蹤
 - [DONE] 讀取規格、同步 main 並建立專用分支
