@@ -9,9 +9,11 @@ const CommandType = {
   StartPresentationFromCurrent: 7,
   SelectPresentation: 8,
   ActivateAgentWindow: 9,
-  DeleteQuestion: 10
+  DeleteQuestion: 10,
+  PlayVideo: 11,
+  PauseResumeVideo: 12
 };
-const APP_VERSION = "v17";
+const APP_VERSION = "v18";
 
 const LANGUAGES = {
   "zh-TW": {
@@ -43,6 +45,9 @@ const LANGUAGES = {
     questionsLabel: "觀眾提問",
     noQuestions: "目前沒有觀眾提問",
     deleteQuestion: "刪除",
+    playVideo: name => `▶ ${name}`,
+    pauseResume: "⏸ 暫停/繼續",
+    videoPanelLabel: "影片",
     questionTime: question => new Date(question.createdAt).toLocaleTimeString(
       [], { hour: "2-digit", minute: "2-digit" }),
     presentationLabel: "選擇要控制的簡報",
@@ -93,6 +98,9 @@ const LANGUAGES = {
     questionsLabel: "观众提问",
     noQuestions: "目前没有观众提问",
     deleteQuestion: "删除",
+    playVideo: name => `▶ ${name}`,
+    pauseResume: "⏸ 暂停/继续",
+    videoPanelLabel: "视频",
     questionTime: question => new Date(question.createdAt).toLocaleTimeString(
       [], { hour: "2-digit", minute: "2-digit" }),
     presentationLabel: "选择要控制的演示",
@@ -143,6 +151,9 @@ const LANGUAGES = {
     questionsLabel: "Audience questions",
     noQuestions: "No audience questions yet",
     deleteQuestion: "Delete",
+    playVideo: name => `▶ ${name}`,
+    pauseResume: "⏸ Pause/resume",
+    videoPanelLabel: "Videos",
     questionTime: question => new Date(question.createdAt).toLocaleTimeString(
       [], { hour: "2-digit", minute: "2-digit" }),
     presentationLabel: "Choose presentation to control",
@@ -189,6 +200,8 @@ const presentationSelect = document.querySelector("#presentation-select");
 const questionList = document.querySelector("#questions");
 const presentationPanel = document.querySelector(".presentation-picker");
 const questionsPanel = document.querySelector(".questions-panel");
+const videoPanel = document.querySelector("#video-panel");
+const videoList = document.querySelector("#videos");
 const presentationToggle = document.querySelector("#presentation-toggle");
 const questionsToggle = document.querySelector("#questions-toggle");
 let socket;
@@ -448,6 +461,24 @@ function renderState(state) {
   notes.textContent = stripVoiceCommands(state.notes) || text.noNotes;
   updateVoiceForState(state);
   renderPresentations(state);
+  renderVideos(state.videos || []);
+}
+
+function renderVideos(videos) {
+  videoPanel.hidden = videos.length === 0;
+  videoList.replaceChildren();
+  for (const video of videos) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = video.playing ? text.pauseResume : text.playVideo(video.name);
+    button.onclick = () => sendCommand(
+      video.playing ? CommandType.PauseResumeVideo : CommandType.PlayVideo,
+      null,
+      null,
+      null,
+      video.playing ? null : video.id);
+    videoList.append(button);
+  }
 }
 
 function renderQuestions(questions) {
@@ -515,7 +546,12 @@ function createCommandId() {
     .join("");
 }
 
-function sendCommand(type, slideNumber = null, presentationId = null, questionId = null) {
+function sendCommand(
+  type,
+  slideNumber = null,
+  presentationId = null,
+  questionId = null,
+  videoId = null) {
   try {
     if (socket?.readyState !== WebSocket.OPEN) {
       status.textContent = text.sendFailed;
@@ -530,7 +566,8 @@ function sendCommand(type, slideNumber = null, presentationId = null, questionId
         type,
         slide: slideNumber,
         presentationId,
-        questionId
+        questionId,
+        videoId
       }
     }));
     return true;

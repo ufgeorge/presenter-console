@@ -26,6 +26,17 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         .Select(pair => new PresentationInfo(pair.Key, GetPresentationName(pair.Value), pair.Key))
         .ToArray();
     public string? SelectedPresentationId => selectedPresentationId;
+    public IReadOnlyList<VideoInfo> Videos => [];
+
+    public void PlayVideo(string videoId)
+    {
+        ErrorOccurred?.Invoke(this, "PowerPoint 不支援影片播放");
+    }
+
+    public void PauseResumeVideo()
+    {
+        ErrorOccurred?.Invoke(this, "PowerPoint 不支援影片播放");
+    }
 
     public PowerPointAdapter(SynchronizationContext? uiContext = null)
     {

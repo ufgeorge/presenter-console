@@ -12,7 +12,9 @@ public enum CommandType
     StartPresentationFromCurrent,
     SelectPresentation,
     ActivateAgentWindow,
-    DeleteQuestion
+    DeleteQuestion,
+    PlayVideo,
+    PauseResumeVideo
 }
 
 public enum MessageType
@@ -33,9 +35,11 @@ public sealed record AgentCommand(
     CommandType Type,
     int? Slide = null,
     string? PresentationId = null,
-    string? QuestionId = null);
+    string? QuestionId = null,
+    string? VideoId = null);
 
 public sealed record PresentationInfo(string Id, string Name, string FullName);
+public sealed record VideoInfo(string Id, string Name, bool Playing);
 
 public sealed record PresentationState(
     int CurrentShowPosition,
@@ -44,7 +48,8 @@ public sealed record PresentationState(
     bool Connected,
     long Sequence,
     IReadOnlyList<PresentationInfo>? Presentations = null,
-    string? SelectedPresentationId = null);
+    string? SelectedPresentationId = null,
+    IReadOnlyList<VideoInfo>? Videos = null);
 
 public sealed record AudienceQuestion(string Id, string Text, DateTime CreatedAt);
 

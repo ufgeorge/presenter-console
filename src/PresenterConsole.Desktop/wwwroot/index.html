@@ -2,8 +2,8 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#111827">
-  <link rel="manifest" href="manifest.webmanifest?v=17">
-  <link rel="stylesheet" href="app.css?v=17">
+  <link rel="manifest" href="manifest.webmanifest?v=18">
+  <link rel="stylesheet" href="app.css?v=18">
   <title>Presenter Console</title>
 </head>
 <body><main>
@@ -47,6 +47,10 @@
       </div>
       <article id="notes" data-i18n="notFetched">尚未取得講稿</article>
     </section>
+    <section id="video-panel" class="video-panel" aria-labelledby="video-label" hidden>
+      <h2 id="video-label" data-i18n="videoPanelLabel">影片</h2>
+      <div id="videos"></div>
+    </section>
     <nav class="page-controls" aria-label="Page controls"><button id="prev" type="button" data-i18n="prev">◀ PREV</button><button id="next" type="button" data-i18n="next">NEXT ▶</button></nav>
   </section>
   <section class="secondary-area">
@@ -66,6 +70,6 @@
     <footer id="version"></footer>
   </section>
 </main>
-<script src="NoSleep.min.js?v=17"></script>
-<script src="app.js?v=17"></script>
+<script src="NoSleep.min.js?v=18"></script>
+<script src="app.js?v=18"></script>
 </body></html>

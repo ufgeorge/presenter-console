@@ -18,6 +18,10 @@ public sealed class OpenDesignAdapter : IPresentationAdapter
     private int currentPosition;
     private string currentNotes = string.Empty;
     private IntPtr targetWindowHandle;
+    private IntPtr videoWindowHandle;
+    private string? playingVideoId;
+    private Process? videoProcess;
+    private IReadOnlyList<VideoInfo> currentVideos = [];
     private bool logNextRefresh;
 
     public event EventHandler? StateChanged;
@@ -38,6 +42,7 @@ public sealed class OpenDesignAdapter : IPresentationAdapter
             project.HtmlPath))
         .ToArray();
     public string? SelectedPresentationId => project.ArtifactPath;
+    public IReadOnlyList<VideoInfo> Videos => currentVideos;
 
     public OpenDesignAdapter(IReadOnlyList<OpenDesignProject> projects)
     {
@@ -85,6 +90,9 @@ public sealed class OpenDesignAdapter : IPresentationAdapter
         expectedPosition = 1;
         currentPosition = 0;
         currentNotes = string.Empty;
+        videoWindowHandle = IntPtr.Zero;
+        playingVideoId = null;
+        videoProcess = null;
         logNextRefresh = true;
         RefreshActualState(raiseEvent: false);
         LogDiagnostic(
@@ -144,6 +152,99 @@ public sealed class OpenDesignAdapter : IPresentationAdapter
     public void StartPresentation(bool fromCurrentSlide)
     {
         ReportError("請先在 Open Design 手動開始播放（全螢幕）");
+    }
+
+    public void PlayVideo(string videoId)
+    {
+        LogDiagnostic($"PlayVideo received videoId={TruncateForLog(videoId)}");
+        var video = currentVideos.FirstOrDefault(candidate =>
+            string.Equals(candidate.Id, videoId, StringComparison.OrdinalIgnoreCase));
+        if (video is null)
+        {
+            ReportError("影片不在目前頁面，請重新整理後再試");
+            LogDiagnostic("PlayVideo rejected reason=not-in-current-slide");
+            return;
+        }
+
+        try
+        {
+            videoProcess = Process.Start(new ProcessStartInfo(video.Id)
+            {
+                UseShellExecute = true
+            });
+            if (videoProcess is null)
+            {
+                ReportError("影片播放器無法啟動，請確認檔案可開啟");
+                return;
+            }
+
+            LogDiagnostic($"PlayVideo started path={TruncateForLog(video.Id)} "
+                + $"processId={videoProcess.Id}");
+            for (var attempt = 1; attempt <= 10; attempt++)
+            {
+                videoProcess.Refresh();
+                videoWindowHandle = videoProcess.MainWindowHandle;
+                LogDiagnostic($"PlayVideo handle attempt={attempt} hwnd={videoWindowHandle}");
+                if (videoWindowHandle != IntPtr.Zero)
+                {
+                    break;
+                }
+
+                Thread.Sleep(500);
+            }
+
+            if (videoWindowHandle == IntPtr.Zero
+                || !BringWindowToForeground(videoWindowHandle))
+            {
+                videoWindowHandle = IntPtr.Zero;
+                ReportError("影片播放器視窗無法帶到前景");
+                return;
+            }
+
+            playingVideoId = video.Id;
+            RefreshActualState(raiseEvent: true);
+        }
+        catch (Exception exception) when (exception is InvalidOperationException
+            or System.ComponentModel.Win32Exception)
+        {
+            ReportError($"影片播放失敗：{exception.Message}");
+            LogDiagnostic($"PlayVideo failed error={TruncateForLog(exception.Message)}");
+        }
+    }
+
+    public void PauseResumeVideo()
+    {
+        LogDiagnostic($"PauseResumeVideo received hwnd={videoWindowHandle}");
+        if (videoWindowHandle == IntPtr.Zero)
+        {
+            ReportError("請先播放影片");
+            return;
+        }
+
+        if (!IsWindow(videoWindowHandle))
+        {
+            videoWindowHandle = IntPtr.Zero;
+            playingVideoId = null;
+            ReportError("影片播放器已關閉，請重新播放");
+            RefreshActualState(raiseEvent: true);
+            return;
+        }
+
+        var down = PostMessage(
+            videoWindowHandle,
+            WmKeyDown,
+            new UIntPtr(VkSpace),
+            IntPtr.Zero);
+        var up = PostMessage(
+            videoWindowHandle,
+            WmKeyUp,
+            new UIntPtr(VkSpace),
+            IntPtr.Zero);
+        LogDiagnostic($"PauseResumeVideo post-message keydown={down} keyup={up}");
+        if (!down || !up)
+        {
+            ReportError("影片播放器未接受暫停/繼續操作");
+        }
     }
 
     public void Dispose()
@@ -208,7 +309,25 @@ public sealed class OpenDesignAdapter : IPresentationAdapter
         var actualPosition = TryGetCdpPosition();
         var nextPosition = actualPosition ?? expectedPosition;
         var nextNotes = ReadNotesForPosition(nextPosition);
-        var changed = nextPosition != currentPosition || nextNotes != currentNotes;
+        var nextVideos = OpenDesignHtmlParser.ReadVideos(
+            project.HtmlPath,
+            nextPosition,
+            LogDiagnostic);
+        if (playingVideoId is not null && !IsWindow(videoWindowHandle))
+        {
+            playingVideoId = null;
+            videoWindowHandle = IntPtr.Zero;
+        }
+
+        nextVideos = nextVideos.Select(video => video with
+        {
+            Playing = string.Equals(
+                video.Id,
+                playingVideoId,
+                StringComparison.OrdinalIgnoreCase)
+        }).ToArray();
+        var changed = nextPosition != currentPosition || nextNotes != currentNotes
+            || !nextVideos.SequenceEqual(currentVideos);
         if (logNextRefresh || nextNotes != currentNotes)
         {
             LogDiagnostic(
@@ -219,6 +338,7 @@ public sealed class OpenDesignAdapter : IPresentationAdapter
         }
         currentPosition = nextPosition;
         currentNotes = nextNotes;
+        currentVideos = nextVideos;
         if (raiseEvent && changed)
         {
             StateChanged?.Invoke(this, EventArgs.Empty);
@@ -379,6 +499,43 @@ public sealed class OpenDesignAdapter : IPresentationAdapter
         return targetWindowHandle != IntPtr.Zero && IsWindow(targetWindowHandle);
     }
 
+    private bool BringWindowToForeground(IntPtr windowHandle)
+    {
+        if (windowHandle == IntPtr.Zero || !IsWindow(windowHandle))
+        {
+            LogDiagnostic("BringVideoWindowToForeground validate=failed");
+            return false;
+        }
+
+        if (IsIconic(windowHandle))
+        {
+            ShowWindow(windowHandle, SwRestore);
+            Thread.Sleep(300);
+        }
+
+        keybd_event(VkShift, 0, 0, UIntPtr.Zero);
+        keybd_event(VkShift, 0, KeyEventKeyUp, UIntPtr.Zero);
+        var targetThreadId = GetWindowThreadProcessId(windowHandle, IntPtr.Zero);
+        var currentThreadId = GetCurrentThreadId();
+        var attached = targetThreadId != 0 && targetThreadId != currentThreadId
+            && AttachThreadInput(currentThreadId, targetThreadId, true);
+        try
+        {
+            var setForeground = SetForegroundWindow(windowHandle);
+            var verified = GetForegroundWindow() == windowHandle;
+            LogDiagnostic($"BringVideoWindowToForeground set={setForeground} "
+                + $"verified={verified} hwnd={windowHandle}");
+            return setForeground && verified;
+        }
+        finally
+        {
+            if (attached)
+            {
+                AttachThreadInput(currentThreadId, targetThreadId, false);
+            }
+        }
+    }
+
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool IsWindow(IntPtr windowHandle);
@@ -386,6 +543,45 @@ public sealed class OpenDesignAdapter : IPresentationAdapter
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool SetForegroundWindow(IntPtr windowHandle);
+
+    private const int SwRestore = 9;
+    private const uint KeyEventKeyUp = 0x0002;
+    private const byte VkShift = 0x10;
+    private const byte VkSpace = 0x20;
+    private const uint WmKeyDown = 0x0100;
+    private const uint WmKeyUp = 0x0101;
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsIconic(IntPtr windowHandle);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool ShowWindow(IntPtr windowHandle, int command);
+
+    [DllImport("user32.dll")]
+    private static extern void keybd_event(
+        byte virtualKey, byte scanCode, uint flags, UIntPtr extraInfo);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool PostMessage(
+        IntPtr windowHandle, uint message, UIntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(
+        IntPtr windowHandle, IntPtr processId);
+
+    [DllImport("kernel32.dll")]
+    private static extern uint GetCurrentThreadId();
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool AttachThreadInput(
+        uint sourceThreadId, uint targetThreadId, bool attach);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
 
     private void ReportError(string message)
     {

@@ -10,11 +10,7 @@ public sealed class UnavailablePresentationAdapter : IPresentationAdapter
         remove { }
     }
 
-    event EventHandler<string>? IPresentationAdapter.ErrorOccurred
-    {
-        add { }
-        remove { }
-    }
+    public event EventHandler<string>? ErrorOccurred;
 
     event EventHandler? IPresentationAdapter.PresentationsChanged
     {
@@ -27,6 +23,7 @@ public sealed class UnavailablePresentationAdapter : IPresentationAdapter
     public string CurrentNotes => string.Empty;
     public IReadOnlyList<PresentationInfo> Presentations => [];
     public string? SelectedPresentationId => null;
+    public IReadOnlyList<VideoInfo> Videos => [];
 
     public void Next()
     {
@@ -49,6 +46,16 @@ public sealed class UnavailablePresentationAdapter : IPresentationAdapter
     }
 
     public bool SelectPresentation(string presentationId) => false;
+
+    public void PlayVideo(string videoId)
+    {
+        ErrorOccurred?.Invoke(this, "尚未支援影片播放");
+    }
+
+    public void PauseResumeVideo()
+    {
+        ErrorOccurred?.Invoke(this, "尚未支援影片播放");
+    }
 
     public void Dispose()
     {
