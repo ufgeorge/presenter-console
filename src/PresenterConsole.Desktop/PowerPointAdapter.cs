@@ -797,11 +797,22 @@ public sealed class PowerPointAdapter : IPresentationAdapter
 
                 dynamic textFrame = tracker.Track((object)shape.TextFrame);
                 dynamic textRange = tracker.Track((object)textFrame.TextRange);
-                var normalizedText = ((string)textRange.Text)
-                    .Replace("\v", "\n")
-                    .Replace("\r", "\n")
-                    .TrimEnd('\n');
-                notes.Add(normalizedText);
+                var paragraphs = new List<string>();
+                var paragraphCount = (int)textRange.Paragraphs().Count;
+                for (var paragraphIndex = 1;
+                     paragraphIndex <= paragraphCount;
+                     paragraphIndex++)
+                {
+                    dynamic paragraph = tracker.Track(
+                        (object)textRange.Paragraphs(paragraphIndex, 1));
+                    var text = ((string)paragraph.Text)
+                        .Replace("\v", "\n")
+                        .Replace("\r", "\n")
+                        .TrimEnd('\n');
+                    paragraphs.Add(TryReadBulletPrefix(paragraph) + text);
+                }
+
+                notes.Add(string.Join(Environment.NewLine, paragraphs));
             }
 
             return string.Join(Environment.NewLine, notes);
@@ -809,6 +820,39 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         catch (COMException exception)
         {
             ReportComFailure("ReadNotes", exception);
+            return string.Empty;
+        }
+    }
+
+    private static string TryReadBulletPrefix(dynamic paragraph)
+    {
+        try
+        {
+            dynamic bullet = paragraph.ParagraphFormat.Bullet;
+            var type = (int)bullet.Type;
+            var visible = (int)bullet.Visible;
+            if (visible != -1)
+            {
+                return string.Empty;
+            }
+
+            return type switch
+            {
+                1 => NotesTextBuilder.BuildParagraphPrefix(
+                    type,
+                    visible,
+                    (int)bullet.Character,
+                    0),
+                2 => NotesTextBuilder.BuildParagraphPrefix(
+                    type,
+                    visible,
+                    0,
+                    (int)bullet.Number),
+                _ => string.Empty,
+            };
+        }
+        catch (COMException)
+        {
             return string.Empty;
         }
     }

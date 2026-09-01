@@ -20,6 +20,8 @@
     <Content Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\..\src\PresenterConsole.Desktop\NotesTextBuilder.cs"
+             Link="NotesTextBuilder.cs" />
     <Compile Include="..\..\src\PresenterConsole.Desktop\OpenDesignHtmlParser.cs"
              Link="OpenDesignHtmlParser.cs" />
     <Compile Include="..\..\src\PresenterConsole.Desktop\OpenDesignProjectScanner.cs"

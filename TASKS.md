@@ -43,6 +43,7 @@
 - [x] Issue #12：LAN HTTP Wake Lock 的 NoSleep fallback 與自動鎖定指引
 
 ## DONE
+- [x] Issue #111：PowerPoint notes 自動編號與項目符號前綴重建；PR #112（review comments 目前無留言）
 - [x] Issue #64：實作與驗證（待 PR review）
 - [x] Issue #38：Wake 警告改為暫時性 toast、修復 icon 閃爍並更新 PWA 快取版本
 - [x] Issue #36：修復 Wake 警告區塊的 CSS display 覆蓋 hidden
