@@ -13,7 +13,7 @@ const CommandType = {
   PlayVideo: 11,
   PauseResumeVideo: 12
 };
-const APP_VERSION = "v19";
+const APP_VERSION = "v20";
 
 const LANGUAGES = {
   "zh-TW": {
@@ -470,7 +470,11 @@ function renderState(state) {
   if (!state) return;
 
   slide.textContent = text.slide(state.currentShowPosition, state.slideCount);
-  notes.textContent = stripVoiceCommands(stripVideoTags(state.notes)) || text.noNotes;
+  const nextNotes = stripVoiceCommands(stripVideoTags(state.notes)) || text.noNotes;
+  if (notes.textContent !== nextNotes) {
+    notes.textContent = nextNotes;
+    notes.scrollTop = 0;
+  }
   updateVoiceForState(state);
   renderPresentations(state);
   renderVideos(state.videos || []);
@@ -670,5 +674,5 @@ voiceDismiss.onclick = () => {
   setVoiceWarning(false);
 };
 setupVoiceAvailability();
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=19");
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=20");
 connect();
