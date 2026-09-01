@@ -259,8 +259,8 @@ public static partial class OpenDesignHtmlParser
     private static partial Regex HtmlTagRegex();
 
     [GeneratedRegex(
-        "<video\\b[^>]*>(.*?)((</video\\s*>)|(?=<)|$)",
-        RegexOptions.IgnoreCase | RegexOptions.Singleline)]
+        "<video\\b[^>]*>([^<\\r\\n]*)(?:</video\\s*)?",
+        RegexOptions.IgnoreCase)]
     private static partial Regex VideoTagRegex();
 
     [GeneratedRegex(

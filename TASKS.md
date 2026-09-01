@@ -21,6 +21,7 @@
 - [DONE] 建立 PR #94、讀取 review comments（目前無留言）
 
 ## TODO
+- [x] Issue #105：修復未閉合 video regex 吃掉後續講稿並補 PowerPoint 路徑例外測試
 - [x] Issue #34：限制 Notes 版面高度、確保控制按鈕可見並更新 PWA 快取版本
 - [x] Issue #9：修復手機 NEXT/PREV 控制、拒絕命令診斷與 PowerPoint COM log
 - [x] Issue #11：手機開始簡報按鈕與放映依賴診斷
