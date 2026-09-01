@@ -1,5 +1,8 @@
 # Sprint 1 PR review fixes
 
+## Issue #101 工作追蹤
+- [DONE] 修復 OpenDesign notes 內 `<video>` 檔名格式偵測並新增 5 個測試
+
 ## Issue #99 工作追蹤
 - [DONE] 讀取規格、同步 main 並建立 `codex/issue-99-play-video`
 - [DONE] 實作影片協定、OpenDesign 偵測/播放/暫停與手機 UI

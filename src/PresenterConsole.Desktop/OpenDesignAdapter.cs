@@ -312,6 +312,9 @@ public sealed class OpenDesignAdapter : IPresentationAdapter
         var nextVideos = OpenDesignHtmlParser.ReadVideos(
             project.HtmlPath,
             nextPosition,
+            string.IsNullOrWhiteSpace(project.SpeakerPrivatePath)
+                ? project.HtmlPath
+                : project.SpeakerPrivatePath,
             LogDiagnostic);
         if (playingVideoId is not null && !IsWindow(videoWindowHandle))
         {
