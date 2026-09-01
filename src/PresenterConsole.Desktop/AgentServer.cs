@@ -91,46 +91,55 @@ public sealed class AgentServer : IAsyncDisposable
     {
         uiContext.Post(_ =>
         {
-            switch (command.Type)
+            try
             {
-                case CommandType.Next:
-                    presentation.Next();
-                    break;
-                case CommandType.Previous:
-                    presentation.Previous();
-                    break;
-                case CommandType.GotoSlide when command.Slide is int slide:
-                    presentation.GotoSlide(slide);
-                    break;
-                case CommandType.ActivatePowerPoint:
-                    AgentWindowClosedRequested?.Invoke(this, EventArgs.Empty);
-                    presentation.ActivateWindow();
-                    break;
-                case CommandType.DeleteQuestion when command.QuestionId is { } questionId:
-                    DeleteQuestion(questionId);
-                    break;
-                case CommandType.ActivateAgentWindow:
-                    AgentWindowRequested?.Invoke(this, EventArgs.Empty);
-                    break;
-                case CommandType.StartPresentation:
-                    presentation.StartPresentation(fromCurrentSlide: false);
-                    break;
-                case CommandType.StartPresentationFromCurrent:
-                    presentation.StartPresentation(fromCurrentSlide: true);
-                    break;
-                case CommandType.SelectPresentation
-                    when command.PresentationId is { } presentationId:
-                    if (!presentation.SelectPresentation(presentationId))
-                    {
-                        BroadcastError("找不到選定的簡報，請重新整理清單");
-                    }
-                    break;
-                case CommandType.PlayVideo when command.VideoId is { } videoId:
-                    presentation.PlayVideo(videoId);
-                    break;
-                case CommandType.PauseResumeVideo:
-                    presentation.PauseResumeVideo();
-                    break;
+                switch (command.Type)
+                {
+                    case CommandType.Next:
+                        presentation.Next();
+                        break;
+                    case CommandType.Previous:
+                        presentation.Previous();
+                        break;
+                    case CommandType.GotoSlide when command.Slide is int slide:
+                        presentation.GotoSlide(slide);
+                        break;
+                    case CommandType.ActivatePowerPoint:
+                        AgentWindowClosedRequested?.Invoke(this, EventArgs.Empty);
+                        presentation.ActivateWindow();
+                        break;
+                    case CommandType.DeleteQuestion when command.QuestionId is { } questionId:
+                        DeleteQuestion(questionId);
+                        break;
+                    case CommandType.ActivateAgentWindow:
+                        AgentWindowRequested?.Invoke(this, EventArgs.Empty);
+                        break;
+                    case CommandType.StartPresentation:
+                        presentation.StartPresentation(fromCurrentSlide: false);
+                        break;
+                    case CommandType.StartPresentationFromCurrent:
+                        presentation.StartPresentation(fromCurrentSlide: true);
+                        break;
+                    case CommandType.SelectPresentation
+                        when command.PresentationId is { } presentationId:
+                        if (!presentation.SelectPresentation(presentationId))
+                        {
+                            BroadcastError("找不到選定的簡報，請重新整理清單");
+                        }
+                        break;
+                    case CommandType.PlayVideo when command.VideoId is { } videoId:
+                        presentation.PlayVideo(videoId);
+                        break;
+                    case CommandType.PauseResumeVideo:
+                        presentation.PauseResumeVideo();
+                        break;
+                }
+            }
+            catch (Exception exception)
+            {
+                WriteDiagnosticLog(
+                    $"命令處理失敗 type={command.Type} error={exception.Message}");
+                BroadcastError($"操作失敗：{exception.Message}");
             }
         }, null);
     }

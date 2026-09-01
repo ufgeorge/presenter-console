@@ -121,10 +121,11 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         try
         {
             Thread.Sleep(300);
-            SendKeys.SendWait("{SPACE}");
+            SendKeys.SendWait(" ");
             LogDiagnostic("PauseResumeVideo sendkeys space focused=true");
         }
-        catch (InvalidOperationException exception)
+        catch (Exception exception) when (exception is InvalidOperationException
+            or ArgumentException)
         {
             LogDiagnostic($"PauseResumeVideo sendkeys failed error={exception.Message}");
             ReportVideoError("影片播放器未接受暫停/繼續操作");
