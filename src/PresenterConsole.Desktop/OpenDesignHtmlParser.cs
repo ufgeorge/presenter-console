@@ -91,36 +91,33 @@ public static partial class OpenDesignHtmlParser
         var deckDirectory = Path.GetDirectoryName(Path.GetFullPath(htmlPath))!;
         var videos = new List<VideoInfo>();
         var seenPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        AddVideosFromHtml(
-            sections[slidePosition - 1].Value,
-            deckDirectory,
+        AddVideos(
+            ExtractVideos(sections[slidePosition - 1].Value, deckDirectory, diagnostic),
             videos,
-            seenPaths,
-            diagnostic);
+            seenPaths);
 
         if (!string.IsNullOrWhiteSpace(notesHtmlPath) && File.Exists(notesHtmlPath))
         {
             var notesHtml = File.ReadAllText(notesHtmlPath);
             var rawNotes = ReadRawNotesFromHtml(notesHtml, slidePosition);
-            AddVideosFromHtml(
-                rawNotes,
-                deckDirectory,
+            AddVideos(
+                ExtractVideos(rawNotes, deckDirectory, diagnostic),
                 videos,
-                seenPaths,
-                diagnostic);
+                seenPaths);
         }
 
         return videos;
     }
 
-    private static void AddVideosFromHtml(
-        string html,
-        string deckDirectory,
-        List<VideoInfo> videos,
-        HashSet<string> seenPaths,
-        Action<string>? diagnostic)
+    public static IReadOnlyList<VideoInfo> ExtractVideos(
+        string text,
+        string baseDirectory,
+        Action<string>? diagnostic = null)
     {
-        foreach (Match match in VideoTagRegex().Matches(html))
+        var videos = new List<VideoInfo>();
+        var seenPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        baseDirectory = Path.GetFullPath(baseDirectory);
+        foreach (Match match in VideoTagRegex().Matches(text))
         {
             var src = SourceAttributeRegex().Match(match.Value).Groups[1].Value;
             var name = string.IsNullOrWhiteSpace(src)
@@ -132,7 +129,7 @@ public static partial class OpenDesignHtmlParser
                 continue;
             }
 
-            var path = Path.GetFullPath(Path.Combine(deckDirectory, name));
+            var path = Path.GetFullPath(Path.Combine(baseDirectory, name));
             if (!File.Exists(path))
             {
                 diagnostic?.Invoke(
@@ -143,6 +140,22 @@ public static partial class OpenDesignHtmlParser
             if (seenPaths.Add(path))
             {
                 videos.Add(new VideoInfo(path, Path.GetFileName(name), false));
+            }
+        }
+
+        return videos;
+    }
+
+    private static void AddVideos(
+        IReadOnlyList<VideoInfo> source,
+        List<VideoInfo> videos,
+        HashSet<string> seenPaths)
+    {
+        foreach (var video in source)
+        {
+            if (seenPaths.Add(video.Id))
+            {
+                videos.Add(video);
             }
         }
     }
@@ -205,6 +218,7 @@ public static partial class OpenDesignHtmlParser
 
     private static string CleanText(string html)
     {
+        html = VideoTagRegex().Replace(html, string.Empty);
         var withLineBreaks = BreakTagRegex().Replace(html, "\n");
         var withoutTags = HtmlTagRegex().Replace(withLineBreaks, string.Empty);
         return WebUtility.HtmlDecode(withoutTags)

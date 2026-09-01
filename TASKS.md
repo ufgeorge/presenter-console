@@ -1,5 +1,8 @@
 # Sprint 1 PR review fixes
 
+## Issue #103 工作追蹤
+- [DONE] PowerPoint notes 影片偵測、播放/暫停與手機標籤清理；PR #104
+
 ## Issue #101 工作追蹤
 - [DONE] 修復 OpenDesign notes 內 `<video>` 檔名格式偵測並新增 5 個測試
 

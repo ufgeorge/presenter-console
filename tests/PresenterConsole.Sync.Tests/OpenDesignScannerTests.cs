@@ -108,6 +108,21 @@ public sealed class OpenDesignScannerTests
     }
 
     [Fact]
+    public void ExtractVideosReadsTextAndDeduplicatesPaths()
+    {
+        using var fixture = new VideoFixture(
+            "<video>demo.mp4</video> <video src=\"demo.mp4\">ignored</video>");
+
+        var videos = OpenDesignHtmlParser.ExtractVideos(
+            File.ReadAllText(fixture.HtmlPath),
+            Path.GetDirectoryName(fixture.HtmlPath)!);
+
+        var video = Assert.Single(videos);
+        Assert.Equal(fixture.VideoPath, video.Id);
+        Assert.False(video.Playing);
+    }
+
+    [Fact]
     public void ReadVideosPreservesMultipleVideoOrder()
     {
         using var fixture = new VideoFixture(
