@@ -834,6 +834,14 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             ReportComFailure("取得簡報資料夾", exception);
             return null;
         }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+        catch (NotSupportedException)
+        {
+            return null;
+        }
     }
 
     private void ReportVideoError(string message)

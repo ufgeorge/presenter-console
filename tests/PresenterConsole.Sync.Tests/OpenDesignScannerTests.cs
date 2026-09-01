@@ -184,7 +184,29 @@ public sealed class OpenDesignScannerTests
     public void ReadVideosTrimsVideoFileNameInTagContent()
     {
         using var fixture = new VideoFixture(
-            "<section class=\"slide\"><video>\n  demo.mp4\n</video></section>");
+            "<section class=\"slide\"><video>  demo.mp4  </video></section>");
+
+        var video = Assert.Single(OpenDesignHtmlParser.ReadVideos(fixture.HtmlPath, 1));
+
+        Assert.Equal("demo.mp4", video.Name);
+    }
+
+    [Fact]
+    public void ReadVideosStopsUnclosedVideoContentAtLineBreak()
+    {
+        using var fixture = new VideoFixture(
+            "<section class=\"slide\"><video>demo.mp4\n後續講稿</section>");
+
+        var video = Assert.Single(OpenDesignHtmlParser.ReadVideos(fixture.HtmlPath, 1));
+
+        Assert.Equal("demo.mp4", video.Name);
+    }
+
+    [Fact]
+    public void ReadVideosStopsClosedVideoContentBeforeFollowingText()
+    {
+        using var fixture = new VideoFixture(
+            "<section class=\"slide\"><video>demo.mp4</video>後續文字</section>");
 
         var video = Assert.Single(OpenDesignHtmlParser.ReadVideos(fixture.HtmlPath, 1));
 
