@@ -829,11 +829,27 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         try
         {
             dynamic bullet = paragraph.ParagraphFormat.Bullet;
-            return NotesTextBuilder.BuildParagraphPrefix(
-                (int)bullet.Type,
-                (int)bullet.Visible,
-                (int)bullet.Character,
-                (int)bullet.Number);
+            var type = (int)bullet.Type;
+            var visible = (int)bullet.Visible;
+            if (visible != -1)
+            {
+                return string.Empty;
+            }
+
+            return type switch
+            {
+                1 => NotesTextBuilder.BuildParagraphPrefix(
+                    type,
+                    visible,
+                    (int)bullet.Character,
+                    0),
+                2 => NotesTextBuilder.BuildParagraphPrefix(
+                    type,
+                    visible,
+                    0,
+                    (int)bullet.Number),
+                _ => string.Empty,
+            };
         }
         catch (COMException)
         {
