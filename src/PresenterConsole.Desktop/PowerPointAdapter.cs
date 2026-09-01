@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Diagnostics;
 using System.Windows.Forms;
 using PowerPoint = Microsoft.Office.Interop.PowerPoint;
 using PresenterConsole.Contracts;
@@ -14,6 +15,10 @@ public sealed class PowerPointAdapter : IPresentationAdapter
     private string? selectedPresentationId;
     private int slideCount;
     private string currentNotes = string.Empty;
+    private IReadOnlyList<VideoInfo> currentVideos = [];
+    private IntPtr videoWindowHandle;
+    private string? playingVideoId;
+    private Process? videoProcess;
 
     public event EventHandler? StateChanged;
     public event EventHandler<string>? ErrorOccurred;
@@ -26,16 +31,92 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         .Select(pair => new PresentationInfo(pair.Key, GetPresentationName(pair.Value), pair.Key))
         .ToArray();
     public string? SelectedPresentationId => selectedPresentationId;
-    public IReadOnlyList<VideoInfo> Videos => [];
+    public IReadOnlyList<VideoInfo> Videos => currentVideos;
 
     public void PlayVideo(string videoId)
     {
-        ErrorOccurred?.Invoke(this, "PowerPoint 不支援影片播放");
+        LogDiagnostic($"PlayVideo received videoId={TruncateForLog(videoId)}");
+        var video = currentVideos.FirstOrDefault(candidate =>
+            string.Equals(candidate.Id, videoId, StringComparison.OrdinalIgnoreCase));
+        if (video is null)
+        {
+            ErrorOccurred?.Invoke(this, "影片不在目前頁面");
+            LogDiagnostic("PlayVideo rejected reason=not-in-current-slide");
+            return;
+        }
+
+        try
+        {
+            videoProcess = Process.Start(new ProcessStartInfo(video.Id)
+            {
+                UseShellExecute = true
+            });
+            if (videoProcess is null)
+            {
+                ReportVideoError("影片播放器無法啟動");
+                return;
+            }
+
+            LogDiagnostic($"PlayVideo started path={TruncateForLog(video.Id)} "
+                + $"processId={videoProcess.Id}");
+            for (var attempt = 1; attempt <= 10; attempt++)
+            {
+                videoProcess.Refresh();
+                videoWindowHandle = videoProcess.MainWindowHandle;
+                LogDiagnostic($"PlayVideo handle attempt={attempt} "
+                    + $"hwnd={videoWindowHandle}");
+                if (videoWindowHandle != IntPtr.Zero)
+                {
+                    break;
+                }
+
+                Thread.Sleep(500);
+            }
+
+            if (videoWindowHandle == IntPtr.Zero
+                || !BringWindowToForeground(videoWindowHandle))
+            {
+                videoWindowHandle = IntPtr.Zero;
+                ReportVideoError("影片播放器視窗無法帶到前景");
+                return;
+            }
+
+            playingVideoId = video.Id;
+            RefreshActualState();
+        }
+        catch (Exception exception) when (exception is InvalidOperationException
+            or System.ComponentModel.Win32Exception)
+        {
+            ReportVideoError($"影片播放失敗：{exception.Message}");
+            LogDiagnostic($"PlayVideo failed error={TruncateForLog(exception.Message)}");
+        }
     }
 
     public void PauseResumeVideo()
     {
-        ErrorOccurred?.Invoke(this, "PowerPoint 不支援影片播放");
+        LogDiagnostic($"PauseResumeVideo received hwnd={videoWindowHandle}");
+        if (videoWindowHandle == IntPtr.Zero)
+        {
+            ReportVideoError("請先播放影片");
+            return;
+        }
+
+        if (!IsWindow(videoWindowHandle))
+        {
+            videoWindowHandle = IntPtr.Zero;
+            playingVideoId = null;
+            ReportVideoError("影片播放器已關閉，請重新播放");
+            RefreshActualState();
+            return;
+        }
+
+        var down = PostMessage(videoWindowHandle, WmKeyDown, (IntPtr)0x20, IntPtr.Zero);
+        var up = PostMessage(videoWindowHandle, WmKeyUp, (IntPtr)0x20, IntPtr.Zero);
+        LogDiagnostic($"PauseResumeVideo post-message keydown={down} keyup={up}");
+        if (!down || !up)
+        {
+            ReportVideoError("影片播放器未接受暫停/繼續操作");
+        }
     }
 
     public PowerPointAdapter(SynchronizationContext? uiContext = null)
@@ -101,6 +182,10 @@ public sealed class PowerPointAdapter : IPresentationAdapter
 
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr windowHandle);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsWindow(IntPtr windowHandle);
 
     [DllImport("user32.dll")]
     private static extern bool PostMessage(
@@ -256,7 +341,7 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         selectedPresentationId = presentationId;
         UpdateSelectedPresentationState();
         PresentationsChanged?.Invoke(this, EventArgs.Empty);
-        StateChanged?.Invoke(this, EventArgs.Empty);
+        RefreshActualState();
         return true;
     }
 
@@ -304,6 +389,7 @@ public sealed class PowerPointAdapter : IPresentationAdapter
 
                 CurrentShowPosition = window.View.CurrentShowPosition;
                 currentNotes = ReadNotes(CurrentShowPosition);
+                RefreshCurrentVideos();
                 StateChanged?.Invoke(this, EventArgs.Empty);
             }
             catch (COMException exception)
@@ -327,6 +413,9 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             {
                 CurrentShowPosition = 0;
                 currentNotes = string.Empty;
+                currentVideos = [];
+                playingVideoId = null;
+                videoWindowHandle = IntPtr.Zero;
                 StateChanged?.Invoke(this, EventArgs.Empty);
             }
         });
@@ -614,6 +703,7 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             action(view);
             CurrentShowPosition = (int)view.CurrentShowPosition;
             currentNotes = ReadNotes(CurrentShowPosition);
+            RefreshCurrentVideos();
             StateChanged?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception exception) when (
@@ -631,6 +721,7 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             {
                 CurrentShowPosition = 0;
                 currentNotes = string.Empty;
+                currentVideos = [];
                 StateChanged?.Invoke(this, EventArgs.Empty);
                 return;
             }
@@ -638,6 +729,7 @@ public sealed class PowerPointAdapter : IPresentationAdapter
             dynamic view = window.View;
             CurrentShowPosition = (int)view.CurrentShowPosition;
             currentNotes = ReadNotes(CurrentShowPosition);
+            RefreshCurrentVideos();
             StateChanged?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception exception) when (
@@ -708,6 +800,48 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         }
     }
 
+    private void RefreshCurrentVideos()
+    {
+        if (playingVideoId is not null && !IsWindow(videoWindowHandle))
+        {
+            playingVideoId = null;
+            videoWindowHandle = IntPtr.Zero;
+        }
+
+        var directory = GetPresentationDirectory();
+        var videos = directory is null
+            ? []
+            : OpenDesignHtmlParser.ExtractVideos(currentNotes, directory, LogDiagnostic);
+        currentVideos = videos.Select(video => video with
+        {
+            Playing = string.Equals(
+                video.Id,
+                playingVideoId,
+                StringComparison.OrdinalIgnoreCase)
+        }).ToArray();
+    }
+
+    private string? GetPresentationDirectory()
+    {
+        try
+        {
+            return presentation is null
+                ? null
+                : Path.GetDirectoryName(Path.GetFullPath(presentation.FullName));
+        }
+        catch (COMException exception)
+        {
+            ReportComFailure("取得簡報資料夾", exception);
+            return null;
+        }
+    }
+
+    private void ReportVideoError(string message)
+    {
+        ErrorOccurred?.Invoke(this, message);
+        LogDiagnostic($"Video error={TruncateForLog(message)}");
+    }
+
     private static bool IsSlideNumberPlaceholder(dynamic shape, COMReferenceTracker tracker)
     {
         try
@@ -765,6 +899,14 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         catch (UnauthorizedAccessException)
         {
         }
+    }
+
+    private static string TruncateForLog(string value, int maxLength = 160)
+    {
+        var normalized = value.Replace('\r', ' ').Replace('\n', ' ');
+        return normalized.Length <= maxLength
+            ? normalized
+            : normalized[..maxLength] + "...";
     }
 
     private void ReportComFailure(string operation, Exception exception)

@@ -13,7 +13,7 @@ const CommandType = {
   PlayVideo: 11,
   PauseResumeVideo: 12
 };
-const APP_VERSION = "v18";
+const APP_VERSION = "v19";
 
 const LANGUAGES = {
   "zh-TW": {
@@ -382,6 +382,18 @@ function stripVoiceCommands(noteText) {
     .join("\n");
 }
 
+function stripVideoTags(noteText) {
+  return (noteText || "")
+    .split("\n")
+    .map(line => line
+      .replace(/<video\b[^>]*>.*?<\/video\s*>/gi, "")
+      .replace(/<video\b[^>]*>[^<]*$/gi, "")
+      .replace(/<video\b[^>]*>/gi, "")
+      .trim())
+    .filter(line => line !== "")
+    .join("\n");
+}
+
 function cancelVoiceSequence() {
   voiceSequenceToken++;
   clearTimeout(voiceTimer);
@@ -458,7 +470,7 @@ function renderState(state) {
   if (!state) return;
 
   slide.textContent = text.slide(state.currentShowPosition, state.slideCount);
-  notes.textContent = stripVoiceCommands(state.notes) || text.noNotes;
+  notes.textContent = stripVoiceCommands(stripVideoTags(state.notes)) || text.noNotes;
   updateVoiceForState(state);
   renderPresentations(state);
   renderVideos(state.videos || []);
@@ -658,5 +670,5 @@ voiceDismiss.onclick = () => {
   setVoiceWarning(false);
 };
 setupVoiceAvailability();
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=16");
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js?v=19");
 connect();
