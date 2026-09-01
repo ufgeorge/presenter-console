@@ -9,6 +9,7 @@ public interface IPresentationAdapter : IDisposable
     string CurrentNotes { get; }
     IReadOnlyList<PresentationInfo> Presentations { get; }
     string? SelectedPresentationId { get; }
+    IReadOnlyList<VideoInfo> Videos { get; }
 
     event EventHandler? StateChanged;
     event EventHandler<string>? ErrorOccurred;
@@ -20,4 +21,6 @@ public interface IPresentationAdapter : IDisposable
     void ActivateWindow();
     void StartPresentation(bool fromCurrentSlide);
     bool SelectPresentation(string presentationId);
+    void PlayVideo(string videoId);
+    void PauseResumeVideo();
 }

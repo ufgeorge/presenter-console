@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using PresenterConsole.Contracts;
 
 namespace PresenterConsole.Desktop;
 
@@ -62,6 +63,47 @@ public static partial class OpenDesignHtmlParser
         return notesMatch.Success ? CleanText(notesMatch.Groups[1].Value) : string.Empty;
     }
 
+    public static IReadOnlyList<VideoInfo> ReadVideos(
+        string htmlPath,
+        int slidePosition,
+        Action<string>? diagnostic = null)
+    {
+        if (slidePosition < 1 || !File.Exists(htmlPath))
+        {
+            return [];
+        }
+
+        var sections = SlideSectionRegex().Matches(File.ReadAllText(htmlPath));
+        if (slidePosition > sections.Count)
+        {
+            return [];
+        }
+
+        var deckDirectory = Path.GetDirectoryName(Path.GetFullPath(htmlPath))!;
+        var videos = new List<VideoInfo>();
+        foreach (Match match in VideoTagRegex().Matches(sections[slidePosition - 1].Value))
+        {
+            var src = SourceAttributeRegex().Match(match.Value).Groups[1].Value;
+            if (string.IsNullOrWhiteSpace(src))
+            {
+                continue;
+            }
+
+            src = WebUtility.HtmlDecode(src);
+            var path = Path.GetFullPath(Path.Combine(deckDirectory, src));
+            if (!File.Exists(path))
+            {
+                diagnostic?.Invoke(
+                    $"ReadVideos skipped missing file path={TruncateForLog(path)}");
+                continue;
+            }
+
+            videos.Add(new VideoInfo(path, Path.GetFileName(src), false));
+        }
+
+        return videos;
+    }
+
     private static bool TryReadSpeakerNotesJson(string html, out JsonElement notes)
     {
         notes = default;
@@ -98,6 +140,11 @@ public static partial class OpenDesignHtmlParser
             .Trim();
     }
 
+    private static string TruncateForLog(string value, int maxLength = 160)
+    {
+        return value.Length <= maxLength ? value : value[..maxLength] + "...";
+    }
+
     [GeneratedRegex(
         "<section\\b[^>]*\\bclass\\s*=\\s*[\\\"']"
         + "[^\\\"']*\\bslide\\b[^\\\"']*[\\\"'][^>]*>"
@@ -123,4 +170,12 @@ public static partial class OpenDesignHtmlParser
 
     [GeneratedRegex("<[^>]+>", RegexOptions.Singleline)]
     private static partial Regex HtmlTagRegex();
+
+    [GeneratedRegex("<video\\b[^>]*>", RegexOptions.IgnoreCase)]
+    private static partial Regex VideoTagRegex();
+
+    [GeneratedRegex(
+        "\\bsrc\\s*=\\s*[\\\"']([^\\\"']+)[\\\"']",
+        RegexOptions.IgnoreCase)]
+    private static partial Regex SourceAttributeRegex();
 }

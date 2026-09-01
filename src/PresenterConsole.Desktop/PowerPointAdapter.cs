@@ -26,6 +26,15 @@ public sealed class PowerPointAdapter : IPresentationAdapter
         .Select(pair => new PresentationInfo(pair.Key, GetPresentationName(pair.Value), pair.Key))
         .ToArray();
     public string? SelectedPresentationId => selectedPresentationId;
+    public IReadOnlyList<VideoInfo> Videos => [];
+
+    public void PlayVideo(string videoId)
+    {
+    }
+
+    public void PauseResumeVideo()
+    {
+    }
 
     public PowerPointAdapter(SynchronizationContext? uiContext = null)
     {

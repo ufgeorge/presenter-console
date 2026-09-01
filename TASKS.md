@@ -1,5 +1,12 @@
 # Sprint 1 PR review fixes
 
+## Issue #99 工作追蹤
+- [DONE] 讀取規格、同步 main 並建立 `codex/issue-99-play-video`
+- [DONE] 實作影片協定、OpenDesign 偵測/播放/暫停與手機 UI
+- [DONE] 新增 `ReadVideos` 五項測試
+- [DONE] 執行 build、test、node check、靜態版面與行長驗證
+- [TODO] 建立 PR、處理 review comments，最後切回 main
+
 ## Issue #93 工作追蹤
 - [DONE] 讀取規格、同步 main 並建立專用分支
 - [DONE] 實作 Audience Q&A protocol、HTTP API、QR Scene 與 Agent 面板

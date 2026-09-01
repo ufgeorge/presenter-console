@@ -125,6 +125,12 @@ public sealed class AgentServer : IAsyncDisposable
                         BroadcastError("找不到選定的簡報，請重新整理清單");
                     }
                     break;
+                case CommandType.PlayVideo when command.VideoId is { } videoId:
+                    presentation.PlayVideo(videoId);
+                    break;
+                case CommandType.PauseResumeVideo:
+                    presentation.PauseResumeVideo();
+                    break;
             }
         }, null);
     }
@@ -296,7 +302,8 @@ public sealed class AgentServer : IAsyncDisposable
         true,
         sync.LastSequence,
         presentation.Presentations,
-        presentation.SelectedPresentationId);
+        presentation.SelectedPresentationId,
+        presentation.Videos);
 
     private void BroadcastState()
     {

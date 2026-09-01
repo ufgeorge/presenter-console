@@ -1,4 +1,5 @@
 using PresenterConsole.Desktop;
+using PresenterConsole.Contracts;
 using Microsoft.Data.Sqlite;
 using Xunit;
 
@@ -91,6 +92,66 @@ public sealed class OpenDesignScannerTests
             "損壞 JSON 的 fallback",
             OpenDesignHtmlParser.ReadNotesFromHtml(html, 1));
         Assert.Equal(1, OpenDesignHtmlParser.CountSlidesFromHtml(html));
+    }
+
+    [Fact]
+    public void ReadVideosFindsSingleVideo()
+    {
+        using var fixture = new VideoFixture(
+            "<section class=\"slide\"><video src=\"demo.mp4\"></video></section>");
+
+        var videos = OpenDesignHtmlParser.ReadVideos(fixture.HtmlPath, 1);
+
+        Assert.Equal(
+            new VideoInfo(fixture.VideoPath, "demo.mp4", false),
+            Assert.Single(videos));
+    }
+
+    [Fact]
+    public void ReadVideosPreservesMultipleVideoOrder()
+    {
+        using var fixture = new VideoFixture(
+            "<section class=\"slide\"><video src=\"first.mp4\"></video>"
+            + "<video src=\"second.mp4\"></video></section>",
+            "first.mp4",
+            "second.mp4");
+
+        var videos = OpenDesignHtmlParser.ReadVideos(fixture.HtmlPath, 1);
+
+        Assert.Equal(["first.mp4", "second.mp4"], videos.Select(video => video.Name));
+    }
+
+    [Fact]
+    public void ReadVideosReturnsEmptyWhenSlideHasNoVideo()
+    {
+        using var fixture = new VideoFixture("<section class=\"slide\">Notes</section>");
+
+        Assert.Empty(OpenDesignHtmlParser.ReadVideos(fixture.HtmlPath, 1));
+    }
+
+    [Fact]
+    public void ReadVideosResolvesRelativePathToAbsolutePath()
+    {
+        using var fixture = new VideoFixture(
+            "<section class=\"slide\"><video src=\"media/demo.mp4\"></video></section>",
+            "media/demo.mp4");
+
+        var video = Assert.Single(OpenDesignHtmlParser.ReadVideos(fixture.HtmlPath, 1));
+
+        var expectedPath = Path.Combine(
+            Path.GetDirectoryName(fixture.HtmlPath)!,
+            "media",
+            "demo.mp4");
+        Assert.Equal(Path.GetFullPath(expectedPath), video.Id);
+    }
+
+    [Fact]
+    public void ReadVideosFiltersMissingFiles()
+    {
+        using var fixture = new VideoFixture(
+            "<section class=\"slide\"><video src=\"missing.mp4\"></video></section>");
+
+        Assert.Empty(OpenDesignHtmlParser.ReadVideos(fixture.HtmlPath, 1));
     }
 
     [Fact]
@@ -200,5 +261,34 @@ public sealed class OpenDesignScannerTests
         }
 
         return appData;
+    }
+
+    private sealed class VideoFixture : IDisposable
+    {
+        private readonly string root = Path.Combine(
+            Path.GetTempPath(), $"read-videos-{Guid.NewGuid():N}");
+
+        public string HtmlPath => Path.Combine(root, "deck.html");
+        public string VideoPath => Path.Combine(root, "demo.mp4");
+
+        public VideoFixture(string html, params string[] videoPaths)
+        {
+            Directory.CreateDirectory(root);
+            foreach (var videoPath in videoPaths.Length == 0
+                         ? ["demo.mp4"]
+                         : videoPaths)
+            {
+                var path = Path.Combine(root, videoPath);
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                File.WriteAllBytes(path, []);
+            }
+
+            File.WriteAllText(HtmlPath, html);
+        }
+
+        public void Dispose()
+        {
+            Directory.Delete(root, recursive: true);
+        }
     }
 }
