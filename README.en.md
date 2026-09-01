@@ -16,6 +16,7 @@ Turn your phone into a presenter's console: slide navigation, start/back-to-pres
 | Slide control | NEXT / PREV, start slideshow, start from current slide, one-tap back to presentation |
 | Speaker notes sync | Live notes for the current slide (based on agent-verified page number) |
 | Voice notes | Write `[voice]text [2 sec]` in notes; the phone speaks it via TTS (best heard through the presenter's earpiece) |
+| Video playback | Write `<video>filename</video>` in notes (same folder as the deck); a "Play video" button appears on the phone, plays in the system player in the foreground with pause / resume |
 | Multiple presentations | Open several PowerPoint files / Open Design projects and switch from the phone |
 | Audience Q&A | Show a QR code during the show; audience submits questions from their browser; host views / deletes them |
 | Keep screen awake | Wake Lock (secure context) with NoSleep.js fallback |

@@ -16,6 +16,7 @@
 | 换页控制 | NEXT / PREV、开始简报、从当前页开始、一键回到简报 |
 | 讲者备注同步 | 手机实时显示当前页的 Notes（以 Agent 实测页码为准） |
 | 语音备注 | Notes 写 `[voice]文字 [2 sec]` 语法，手机自动 TTS 播报（讲者戴耳机听，最不干扰） |
+| 影片播放 | Notes 写 `<video>文件名</video>`（与简报同一文件夹），手机出现「播放影片」按钮，系统播放器前台播放，可暂停 / 继续 |
 | 多简报选择 | 同时打开多个 PowerPoint 文件 / Open Design 项目，手机下拉切换 |
 | 观众提问（Audience Q&A） | 放映中手机显示提问二维码，观众用浏览器送问题，控制端查看 / 删除 |
 | 屏幕不休眠 | Wake Lock（secure context）+ NoSleep.js fallback |
