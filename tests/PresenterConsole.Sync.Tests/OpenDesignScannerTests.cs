@@ -155,6 +155,73 @@ public sealed class OpenDesignScannerTests
     }
 
     [Fact]
+    public void ReadVideosFindsVideoFileNameInTagContent()
+    {
+        using var fixture = new VideoFixture(
+            "<section class=\"slide\"><video>demo.mp4</video></section>");
+
+        var video = Assert.Single(OpenDesignHtmlParser.ReadVideos(fixture.HtmlPath, 1));
+
+        Assert.Equal(new VideoInfo(fixture.VideoPath, "demo.mp4", false), video);
+    }
+
+    [Fact]
+    public void ReadVideosTrimsVideoFileNameInTagContent()
+    {
+        using var fixture = new VideoFixture(
+            "<section class=\"slide\"><video>\n  demo.mp4\n</video></section>");
+
+        var video = Assert.Single(OpenDesignHtmlParser.ReadVideos(fixture.HtmlPath, 1));
+
+        Assert.Equal("demo.mp4", video.Name);
+    }
+
+    [Fact]
+    public void ReadVideosFindsVideoFileNameInSpeakerNotesJson()
+    {
+        using var fixture = new VideoFixture(
+            "<section class=\"slide\">頁面內容</section>");
+        fixture.WriteNotesHtml(
+            "<script id=\"speaker-notes\" type=\"application/json\">"
+            + "[\"[開錄影]...<video>demo.mp4</video>...\"]</script>");
+
+        var videos = OpenDesignHtmlParser.ReadVideos(
+            fixture.HtmlPath,
+            1,
+            fixture.NotesHtmlPath);
+
+        Assert.Equal("demo.mp4", Assert.Single(videos).Name);
+    }
+
+    [Fact]
+    public void ReadVideosFindsUnclosedVideoTagContent()
+    {
+        using var fixture = new VideoFixture(
+            "<section class=\"slide\"><video>demo.mp4</section>");
+
+        var video = Assert.Single(OpenDesignHtmlParser.ReadVideos(fixture.HtmlPath, 1));
+
+        Assert.Equal("demo.mp4", video.Name);
+    }
+
+    [Fact]
+    public void ReadVideosDeduplicatesVideoFoundInSectionAndNotes()
+    {
+        using var fixture = new VideoFixture(
+            "<section class=\"slide\"><video src=\"demo.mp4\"></video></section>");
+        fixture.WriteNotesHtml(
+            "<script id=\"speaker-notes\" type=\"application/json\">"
+            + "[\"<video>demo.mp4</video>\"]</script>");
+
+        var videos = OpenDesignHtmlParser.ReadVideos(
+            fixture.HtmlPath,
+            1,
+            fixture.NotesHtmlPath);
+
+        Assert.Single(videos);
+    }
+
+    [Fact]
     public void ScannerUsesDatabaseProjectNameWhenHtmlParentMatchesProjectId()
     {
         var root = Path.Combine(Path.GetTempPath(), $"opendesign-scanner-{Guid.NewGuid():N}");
@@ -269,6 +336,7 @@ public sealed class OpenDesignScannerTests
             Path.GetTempPath(), $"read-videos-{Guid.NewGuid():N}");
 
         public string HtmlPath => Path.Combine(root, "deck.html");
+        public string NotesHtmlPath => Path.Combine(root, "deck-speaker-private.html");
         public string VideoPath => Path.Combine(root, "demo.mp4");
 
         public VideoFixture(string html, params string[] videoPaths)
@@ -284,6 +352,11 @@ public sealed class OpenDesignScannerTests
             }
 
             File.WriteAllText(HtmlPath, html);
+        }
+
+        public void WriteNotesHtml(string html)
+        {
+            File.WriteAllText(NotesHtmlPath, html);
         }
 
         public void Dispose()

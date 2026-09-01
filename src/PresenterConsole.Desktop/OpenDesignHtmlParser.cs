@@ -68,6 +68,15 @@ public static partial class OpenDesignHtmlParser
         int slidePosition,
         Action<string>? diagnostic = null)
     {
+        return ReadVideos(htmlPath, slidePosition, null, diagnostic);
+    }
+
+    public static IReadOnlyList<VideoInfo> ReadVideos(
+        string htmlPath,
+        int slidePosition,
+        string? notesHtmlPath,
+        Action<string>? diagnostic = null)
+    {
         if (slidePosition < 1 || !File.Exists(htmlPath))
         {
             return [];
@@ -81,16 +90,49 @@ public static partial class OpenDesignHtmlParser
 
         var deckDirectory = Path.GetDirectoryName(Path.GetFullPath(htmlPath))!;
         var videos = new List<VideoInfo>();
-        foreach (Match match in VideoTagRegex().Matches(sections[slidePosition - 1].Value))
+        var seenPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        AddVideosFromHtml(
+            sections[slidePosition - 1].Value,
+            deckDirectory,
+            videos,
+            seenPaths,
+            diagnostic);
+
+        if (!string.IsNullOrWhiteSpace(notesHtmlPath) && File.Exists(notesHtmlPath))
+        {
+            var notesHtml = File.ReadAllText(notesHtmlPath);
+            var rawNotes = ReadRawNotesFromHtml(notesHtml, slidePosition);
+            AddVideosFromHtml(
+                rawNotes,
+                deckDirectory,
+                videos,
+                seenPaths,
+                diagnostic);
+        }
+
+        return videos;
+    }
+
+    private static void AddVideosFromHtml(
+        string html,
+        string deckDirectory,
+        List<VideoInfo> videos,
+        HashSet<string> seenPaths,
+        Action<string>? diagnostic)
+    {
+        foreach (Match match in VideoTagRegex().Matches(html))
         {
             var src = SourceAttributeRegex().Match(match.Value).Groups[1].Value;
-            if (string.IsNullOrWhiteSpace(src))
+            var name = string.IsNullOrWhiteSpace(src)
+                ? match.Groups[1].Value
+                : src;
+            name = WebUtility.HtmlDecode(name).Trim();
+            if (string.IsNullOrWhiteSpace(name))
             {
                 continue;
             }
 
-            src = WebUtility.HtmlDecode(src);
-            var path = Path.GetFullPath(Path.Combine(deckDirectory, src));
+            var path = Path.GetFullPath(Path.Combine(deckDirectory, name));
             if (!File.Exists(path))
             {
                 diagnostic?.Invoke(
@@ -98,10 +140,11 @@ public static partial class OpenDesignHtmlParser
                 continue;
             }
 
-            videos.Add(new VideoInfo(path, Path.GetFileName(src), false));
+            if (seenPaths.Add(path))
+            {
+                videos.Add(new VideoInfo(path, Path.GetFileName(name), false));
+            }
         }
-
-        return videos;
     }
 
     private static bool TryReadSpeakerNotesJson(string html, out JsonElement notes)
@@ -128,6 +171,36 @@ public static partial class OpenDesignHtmlParser
         {
             return false;
         }
+    }
+
+    private static string ReadRawNotesFromHtml(string html, int slidePosition)
+    {
+        if (slidePosition < 1)
+        {
+            return string.Empty;
+        }
+
+        if (TryReadSpeakerNotesJson(html, out var notes))
+        {
+            if (slidePosition > notes.GetArrayLength())
+            {
+                return string.Empty;
+            }
+
+            var note = notes[slidePosition - 1];
+            return note.ValueKind == JsonValueKind.String
+                ? note.GetString() ?? string.Empty
+                : string.Empty;
+        }
+
+        var sections = SlideSectionRegex().Matches(html);
+        if (slidePosition > sections.Count)
+        {
+            return string.Empty;
+        }
+
+        var notesMatch = SpeakerNotesRegex().Match(sections[slidePosition - 1].Value);
+        return notesMatch.Success ? notesMatch.Groups[1].Value : string.Empty;
     }
 
     private static string CleanText(string html)
@@ -171,7 +244,9 @@ public static partial class OpenDesignHtmlParser
     [GeneratedRegex("<[^>]+>", RegexOptions.Singleline)]
     private static partial Regex HtmlTagRegex();
 
-    [GeneratedRegex("<video\\b[^>]*>", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(
+        "<video\\b[^>]*>(.*?)((</video\\s*>)|(?=<)|$)",
+        RegexOptions.IgnoreCase | RegexOptions.Singleline)]
     private static partial Regex VideoTagRegex();
 
     [GeneratedRegex(
