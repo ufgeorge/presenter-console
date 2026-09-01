@@ -169,3 +169,10 @@
 - [DONE] 同步三語 aria、PWA v17 資源 query 與 Service Worker cache
 - [DONE] 完成三 viewport 版面與互動驗證、node check、build、test
 - [DONE] 建立 PR #98、讀取 review comments（目前無留言）
+
+## Issue #107 工作追蹤
+- [DONE] 讀取規範與 issue #107，建立 `codex/issue-107-video-sendkeys`
+- [DONE] 將兩個 adapter 的影片暫停/繼續改為 SendKeys
+- [DONE] 執行格式、build、test 與 build server 清理驗證
+- [IN PROGRESS] 建立 PR 並處理 review comments
+- [TODO] 收尾切回 `main` 並同步遠端
