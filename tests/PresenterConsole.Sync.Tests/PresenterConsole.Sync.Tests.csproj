@@ -28,5 +28,7 @@
              Link="OpenDesignProjectScanner.cs" />
     <Compile Include="..\..\src\PresenterConsole.Desktop\AudienceQuestionStore.cs"
              Link="AudienceQuestionStore.cs" />
+    <Compile Include="..\..\src\PresenterConsole.Desktop\VideoWindowResolver.cs"
+             Link="VideoWindowResolver.cs" />
   </ItemGroup>
 </Project>
