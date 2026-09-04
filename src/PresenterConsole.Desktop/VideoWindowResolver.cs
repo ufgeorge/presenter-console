@@ -14,6 +14,7 @@ public static class VideoWindowResolver
 {
     public static VideoWindowResolution? Resolve(
         VideoProcessSnapshot? launchedProcess,
+        string? targetProcessName,
         IntPtr trackedWindowHandle,
         Func<IntPtr, bool> isWindow,
         IEnumerable<VideoProcessSnapshot> existingProcesses,
@@ -44,12 +45,12 @@ public static class VideoWindowResolver
             return new VideoWindowResolution(trackedWindowHandle, "tracked-window");
         }
 
-        if (launchedProcess is not null)
+        if (!string.IsNullOrEmpty(targetProcessName))
         {
             var existing = existingProcesses.FirstOrDefault(process =>
                 string.Equals(
                     process.ProcessName,
-                    launchedProcess.ProcessName,
+                    targetProcessName,
                     StringComparison.OrdinalIgnoreCase)
                 && process.MainWindowHandle != IntPtr.Zero
                 && IsUsable(process.MainWindowHandle, isWindow));
@@ -64,6 +65,20 @@ public static class VideoWindowResolver
 
         log("source=none result=no-valid-window");
         return null;
+    }
+
+    public static string? TryGetProcessName(Process process, Action<string> log)
+    {
+        try
+        {
+            process.Refresh();
+            return process.ProcessName;
+        }
+        catch (Exception exception) when (IsProcessQueryFailure(exception))
+        {
+            log($"process-name-query failed error={exception.GetType().Name}");
+            return null;
+        }
     }
 
     public static VideoProcessSnapshot? TrySnapshot(Process process, Action<string> log)

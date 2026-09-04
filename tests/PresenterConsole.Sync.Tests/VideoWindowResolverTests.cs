@@ -14,6 +14,7 @@ public sealed class VideoWindowResolverTests
     {
         var result = Resolve(
             new VideoProcessSnapshot("vlc", new IntPtr(2), false),
+            "vlc",
             new IntPtr(3),
             [new VideoProcessSnapshot("vlc", new IntPtr(4), false)]);
 
@@ -26,6 +27,7 @@ public sealed class VideoWindowResolverTests
     {
         var result = Resolve(
             new VideoProcessSnapshot("vlc", IntPtr.Zero, false),
+            "vlc",
             new IntPtr(3),
             [new VideoProcessSnapshot("vlc", new IntPtr(4), false)]);
 
@@ -38,6 +40,7 @@ public sealed class VideoWindowResolverTests
     {
         var result = Resolve(
             new VideoProcessSnapshot("vlc", IntPtr.Zero, true),
+            "vlc",
             IntPtr.Zero,
             [new VideoProcessSnapshot("vlc", new IntPtr(4), false)]);
 
@@ -50,6 +53,7 @@ public sealed class VideoWindowResolverTests
     {
         var result = Resolve(
             new VideoProcessSnapshot("vlc", IntPtr.Zero, false),
+            "vlc",
             new IntPtr(99),
             [new VideoProcessSnapshot("vlc", new IntPtr(4), false)]);
 
@@ -61,19 +65,35 @@ public sealed class VideoWindowResolverTests
     {
         var result = Resolve(
             new VideoProcessSnapshot("vlc", IntPtr.Zero, true),
+            "vlc",
             new IntPtr(99),
             [new VideoProcessSnapshot("vlc", new IntPtr(98), false)]);
 
         Assert.Null(result);
     }
 
+    [Fact]
+    public void UsesTargetProcessNameWhenLaunchedSnapshotIsUnavailable()
+    {
+        var result = Resolve(
+            null,
+            "vlc",
+            IntPtr.Zero,
+            [new VideoProcessSnapshot("vlc", new IntPtr(4), false)]);
+
+        Assert.Equal(new IntPtr(4), result!.Handle);
+        Assert.Equal("same-process-existing-window", result.Source);
+    }
+
     private static VideoWindowResolution? Resolve(
-        VideoProcessSnapshot launched,
+        VideoProcessSnapshot? launched,
+        string targetProcessName,
         IntPtr tracked,
         IEnumerable<VideoProcessSnapshot> existing)
     {
         return VideoWindowResolver.Resolve(
             launched,
+            targetProcessName,
             tracked,
             ValidWindow,
             existing,

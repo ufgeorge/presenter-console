@@ -179,19 +179,23 @@ public sealed class OpenDesignAdapter : IPresentationAdapter
                 return;
             }
 
+            var targetProcessName = VideoWindowResolver.TryGetProcessName(
+                videoProcess,
+                LogDiagnostic);
             LogDiagnostic($"PlayVideo started path={TruncateForLog(video.Id)} "
                 + $"processId={videoProcess.Id}");
             VideoWindowResolution? resolution = null;
             for (var attempt = 1; attempt <= 10; attempt++)
             {
                 var snapshot = VideoWindowResolver.TrySnapshot(videoProcess, LogDiagnostic);
-                var existingProcesses = snapshot is null
+                var existingProcesses = targetProcessName is null
                     ? []
                     : VideoWindowResolver.GetExistingProcesses(
-                        snapshot.ProcessName,
+                        targetProcessName,
                         LogDiagnostic);
                 resolution = VideoWindowResolver.Resolve(
                     snapshot,
+                    targetProcessName,
                     trackedWindowHandle,
                     IsWindow,
                     existingProcesses,
