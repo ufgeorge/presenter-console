@@ -47,6 +47,7 @@ public sealed class PowerPointAdapter : IPresentationAdapter
 
         try
         {
+            var trackedWindowHandle = videoWindowHandle;
             videoProcess = Process.Start(new ProcessStartInfo(video.Id)
             {
                 UseShellExecute = true
@@ -57,15 +58,31 @@ public sealed class PowerPointAdapter : IPresentationAdapter
                 return;
             }
 
+            var targetProcessName = VideoWindowResolver.TryGetProcessName(
+                videoProcess,
+                LogDiagnostic);
             LogDiagnostic($"PlayVideo started path={TruncateForLog(video.Id)} "
                 + $"processId={videoProcess.Id}");
+            VideoWindowResolution? resolution = null;
             for (var attempt = 1; attempt <= 10; attempt++)
             {
-                videoProcess.Refresh();
-                videoWindowHandle = videoProcess.MainWindowHandle;
+                var snapshot = VideoWindowResolver.TrySnapshot(videoProcess, LogDiagnostic);
+                var existingProcesses = targetProcessName is null
+                    ? []
+                    : VideoWindowResolver.GetExistingProcesses(
+                        targetProcessName,
+                        LogDiagnostic);
+                resolution = VideoWindowResolver.Resolve(
+                    snapshot,
+                    targetProcessName,
+                    trackedWindowHandle,
+                    IsWindow,
+                    existingProcesses,
+                    LogDiagnostic);
                 LogDiagnostic($"PlayVideo handle attempt={attempt} "
-                    + $"hwnd={videoWindowHandle}");
-                if (videoWindowHandle != IntPtr.Zero)
+                    + $"source={resolution?.Source ?? "none"} "
+                    + $"hwnd={resolution?.Handle ?? IntPtr.Zero}");
+                if (resolution is not null)
                 {
                     break;
                 }
@@ -73,8 +90,18 @@ public sealed class PowerPointAdapter : IPresentationAdapter
                 Thread.Sleep(500);
             }
 
-            if (videoWindowHandle == IntPtr.Zero
-                || !BringWindowToForeground(videoWindowHandle))
+            if (resolution is null)
+            {
+                videoWindowHandle = IntPtr.Zero;
+                ReportVideoError("影片播放器視窗無法帶到前景");
+                return;
+            }
+
+            videoWindowHandle = resolution.Handle;
+            var focused = BringWindowToForeground(videoWindowHandle);
+            LogDiagnostic($"PlayVideo foreground result={(focused ? "success" : "failed")} "
+                + $"source={resolution.Source} hwnd={videoWindowHandle}");
+            if (!focused)
             {
                 videoWindowHandle = IntPtr.Zero;
                 ReportVideoError("影片播放器視窗無法帶到前景");

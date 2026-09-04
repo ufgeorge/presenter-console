@@ -1,5 +1,11 @@
 # Sprint 1 PR review fixes
 
+## Issue #115 工作追蹤
+- [DONE] VLC 已在背景時共用播放器視窗解析與單元測試
+- [DONE] 依序完成 build、test、行長檢查與 build-server shutdown
+- [DONE] 建立 PR #116、讀取 review comments（目前無留言）
+- [DONE] 最後切回 main 並同步遠端
+
 ## Issue #103 工作追蹤
 - [DONE] PowerPoint notes 影片偵測、播放/暫停與手機標籤清理；PR #104
 
